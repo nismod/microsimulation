@@ -1,0 +1,3 @@
+distutils_pytest
+git+git://github.com/virgesmith/humanleague.git
+git+git://github.com/virgesmith/UKCensusAPI.git
