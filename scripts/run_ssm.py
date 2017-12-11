@@ -4,10 +4,7 @@
 
 import sys
 import time
-#import humanleague
-#import ukcensusapi.Nomisweb as Api
 import microsimulation.static as Static
-import household_microsynth.utils as Utils
 
 #assert humanleague.version() > 1
 CACHE_DIR = "./cache"
@@ -18,20 +15,19 @@ def main(region, resolution):
   # # start timing
   start_time = time.time()
 
-  print("Microsynthesis region:", region)
-  print("Microsynthesis resolution:", resolution)
+  print("Static Microsimulation region:", region)
+  print("Static Microsimulation resolution:", resolution)
+
   # init microsynthesis
   try:
-    msynth = Microsynthesiser.Microsynthesis(region, resolution, CACHE_DIR)
+    ssm = Static.SequentialMicrosynthesis(region, resolution, CACHE_DIR)
   except Exception as e:
     print(e)
     return
 
-
-
   # generate the population
   try:
-    msynth.run()
+    ssm.run()
   except Exception as e:
     print(e)
     return

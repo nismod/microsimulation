@@ -27,6 +27,9 @@ class SequentialMicrosynthesis:
     # (down)load the mid-year estimates 
     self.__get_mye_data()
 
+  def run(self):
+    pass
+
   def __get_census_data(self):
 
     # convert input string to enum
