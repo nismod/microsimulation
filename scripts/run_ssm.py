@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# run script for Household microsynthesis
+# run script for static sequential microsynthesis
 
 import sys
 import time
@@ -27,19 +27,20 @@ def main(region, resolution):
 
   # generate the population
   try:
-    ssm.run()
+    ssm.run(startYear, endYear)
   except Exception as e:
     print(e)
     return
 
   print("Done. Exec time(s): ", time.time() - start_time)
 
-
 if __name__ == "__main__":
   if len(sys.argv) != 3:
-    print("usage:", sys.argv[0], "<region> <resolution>")
-    print("e.g:", sys.argv[0], "E09000001 OA11")
+    print("usage:", sys.argv[0], "<region> <resolution> <startYear> <endYear>")
+    print("e.g:", sys.argv[0], "E09000001 OA11 2001 2016")
   else:
-    REGION = sys.argv[1]
-    RESOLUTION = sys.argv[2]
-    main(REGION, RESOLUTION)
+    region = sys.argv[1]
+    resolution = sys.argv[2]
+    startYear = sys.argv[3]
+    endYear = sys.argv[4]
+    main(region, resolution)

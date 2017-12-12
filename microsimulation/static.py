@@ -1,12 +1,10 @@
-
-
 import numpy as np
 import pandas as pd
 #from random import randint
 
 import ukcensusapi.Nomisweb as Api
 import humanleague as hl
-#import household_microsynth.utils as Utils
+import microsimulation.utils as Utils
 
 class SequentialMicrosynthesis:
   """
@@ -27,8 +25,19 @@ class SequentialMicrosynthesis:
     # (down)load the mid-year estimates 
     self.__get_mye_data()
 
-  def run(self):
-    pass
+  def run(self, startYear, endYear):
+
+    if startYear > endYear:
+      raise ValueError("end year must be greater than or equal to start year")
+
+    if startYear < 2001:
+      raise ValueError("2001 is the earliest supported start year")
+      
+    if endYear > 2016:
+      raise ValueError("2016 is the current latest supported end year")
+
+    for y in range(startYear, endYear+1):
+      pass
 
   def __get_census_data(self):
 
@@ -109,3 +118,57 @@ class SequentialMicrosynthesis:
     self.mye[2015] = self.data_api.get_data("MYE15EW", table_internal, queryParams)
     queryParams["date"] = "latest"
     self.mye[2016] = self.data_api.get_data("MYE16EW", table_internal, queryParams)
+
+
+# # Knock MYE data into shape
+# adjustMyeAge = function(df) {
+  
+#   # check we preserve the correct total
+#   total = sum(df$OBS_VALUE)
+  
+#   df$AGE = df$AGE - 100
+  
+#   # merge ages 85+ 
+#   df[df$AGE==86,]$OBS_VALUE = df[df$AGE==86,]$OBS_VALUE + df[df$AGE==87,]$OBS_VALUE + df[df$AGE==88,]$OBS_VALUE +
+#                               df[df$AGE==89,]$OBS_VALUE + df[df$AGE==90,]$OBS_VALUE + df[df$AGE==91,]$OBS_VALUE
+#   # remove now-duplicated rows
+#   df = df[df$AGE<87,]
+  
+#   # check total is preserved
+#   stopifnot(sum(df$OBS_VALUE) == total)
+  
+#   return(df)
+# }
+
+
+# createAgeSexMarginal = function(df, LAD) {
+#   marginal = xtabs(OBS_VALUE~GENDER+AGE, df[df$GEOGRAPHY_CODE==LAD,])
+#   return(marginal)
+# }
+  #def create_age_sex_marginal(self, data, lad):
+  #  marginal = Utils.unlistify(data, data.columns, )
+
+
+# mye01 = adjustMyeAge(mye01)
+# mye02 = adjustMyeAge(mye02)
+# mye03 = adjustMyeAge(mye03)
+# mye04 = adjustMyeAge(mye04)
+# mye05 = adjustMyeAge(mye05)
+# mye06 = adjustMyeAge(mye06)
+# mye07 = adjustMyeAge(mye07)
+# mye08 = adjustMyeAge(mye08)
+# mye09 = adjustMyeAge(mye09)
+# mye10 = adjustMyeAge(mye10)
+# mye11 = adjustMyeAge(mye11)
+# mye12 = adjustMyeAge(mye12)
+# mye13 = adjustMyeAge(mye13)
+# mye14 = adjustMyeAge(mye14)
+# mye15 = adjustMyeAge(mye15)
+# mye16 = adjustMyeAge(mye16)
+
+# nLADs = length(unique(mye12$GEOGRAPHY_CODE))
+
+# # Now have consistent estimates for 2011-2016 by gender by age by LAD
+
+# oaProp = apply(cen11, 1, sum) / sum(cen11)
+# ethProp = apply(cen11, 4, sum) / sum(cen11)
