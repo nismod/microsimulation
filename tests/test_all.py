@@ -12,6 +12,7 @@ class Test(TestCase):
     resolution = "MSOA11"
     cache = "./cache"
     microsim = Static.SequentialMicrosynthesis(region, resolution, cache)
+    microsim.run(2011, 2012)
 
     #print(microsim.mye[2016])
 
