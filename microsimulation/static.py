@@ -151,24 +151,35 @@ class SequentialMicrosynthesis:
     self.mye[2016] = self.data_api.get_data("MYE16EW", table_internal, queryParams)
 
     adjust_mye_age(self.mye[2016])
+    #self.mye[2016].to_csv("mye.csv")
 
 def adjust_mye_age(myedata):
   total = myedata.OBS_VALUE.sum()
   print(total)
   myedata.AGE -= 100
+  #print(myedata.head())
+  to_aggregate = myedata[myedata.AGE >= 86].copy()
+  myedata = myedata[myedata.AGE < 86].copy()
 
-  print(myedata.head())
-
-  #myedata.loc[myedata.AGE==86] = myedata[myedata.AGE==86] + myedata[myedata.AGE==87] 
-  to_aggregate = myedata[myedata.AGE >= 86]
-  myedata = myedata[myedata.AGE < 86]
-
-  agg = pd.pivot_table(to_aggregate, columns=["GEOGRAPHY_CODE", "GENDER"], values="OBS_VALUE", aggfunc=sum)
-  #agg = np.sum(agg, 2)
+  agg = to_aggregate.pivot_table(index=["GEOGRAPHY_CODE","GENDER"], values="OBS_VALUE", aggfunc=sum)
   print(agg)
+  # remove age column
+  #to_aggregate = to_aggregate.drop('AGE', axis=1)
+  # aggregate by geog/gender
+  # to_aggregate["AGE"] = 86
+  # to_aggregate = to_aggregate.groupby(["GEOGRAPHY_CODE","GENDER"]).sum()
+  # print(to_aggregate)
 
-  print(myedata.OBS_VALUE.sum())
-  print(to_aggregate.OBS_VALUE.sum())
+  agg.reset_index(level=["GEOGRAPHY_CODE","GENDER"])
+
+  #to_aggregate = to_aggregate.AGE.replace(531, 86)
+  #print(to_aggregate.head())
+
+  myedata = myedata.append(agg)
+
+  myedata.to_csv("mye.csv")
+
+
 # # Knock MYE data into shape
 # adjustMyeAge = function(df) {
   
