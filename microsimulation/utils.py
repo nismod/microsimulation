@@ -6,11 +6,25 @@ import pandas as pd
 
 # this is a copy-paste from household_microsynth
 def unlistify(table, columns, sizes, values):
+  """
+  Converts an n-column table of counts into an n-dimensional array of counts 
+  """
   pivot = table.pivot_table(index=columns, values=values)
   # order must be same as column order above
   a = np.zeros(sizes, dtype=int)
   a[pivot.index.labels] = pivot.values.flat
   return a
+
+# this is a copy-paste from household_microsynth
+def remap(indices, mapping):
+  """
+  Converts array of index values back into category values
+  """
+  values = []
+  for i in range(0,len(indices)):
+    values.append(mapping[indices[i]])
+  return values
+
 
 def adjust_mye_age(mye):
   """ 

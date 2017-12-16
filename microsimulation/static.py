@@ -46,10 +46,12 @@ class SequentialMicrosynthesis:
     for y in range(startYear, endYear+1):
       print(y)
       msynth = self.microsynthesise(y, oaProp, ethProp)
+
+      msynth.to_csv("./data/ssm_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv")
       #write.csv(msynth, "../data/SSM.csv", row.names = F)
 
-
   def microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
+
     ageSex = create_age_sex_marginal(self.mye[year], self.region) 
 
     # convert proportions/probabilities to integer frequencies
@@ -61,44 +63,18 @@ class SequentialMicrosynthesis:
 
     # now the full seeded microsynthesis
     msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], ageSex])
-    print(msynth)
     assert msynth["conv"]
+    rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
+    # TODO col names and remapped values
+    table = pd.DataFrame(columns=["Area","DC1117EW_C_SEX","DC1117EW_C_AGE","DC2101EW_C_ETHPUK11"])
+    table.Area = Utils.remap(rawtable[0], self.geog_map)
+    table.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1,2])
+    table.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1,87))
+    table.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
+
 #   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-
-# microsynthesise = function(oaProp, ethProp, mye, LAD, cen) {
-  
-#   # MYE for LA gives age-sex marginal
-#   ageSex = createAgeSexMarginal(mye, LAD)
-  
-#   # rescale OA & eth marginals according to MYE data and integerising,
-#   oa = humanleague::prob2IntFreq(oaProp, sum(ageSex))$freq
-#   eth = humanleague::prob2IntFreq(ethProp, sum(ageSex))$freq
-#   # combine the above into a 2d marginal using QIS-I
-#   oa_eth = humanleague::qisi(apply(cen11, c(1,4), sum), list(1,2), list(oa, eth))
-#   stopifnot(oa_eth$conv)
-  
-#   # 6. apply QISI
-#   #msynth = humanleague::qisi(cen11, list(c(1),c(2,3),c(4)), list(oa, ageSex, eth))
-#   #msynth = humanleague::qisi(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-#   # Much faster, for testing
-#   # is this good enough? (we've captured the geog-eth census11 structure in the oa_eth marginal 
-#   # probably not - mean sq error (vs IPF) is ~100x higher than QISI
-#   #msynth = humanleague::qis(list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-#   msynth = humanleague::qisi(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-#   #msynthi = xtabs(~OA+SEX+AGE+ETH, read.csv("../data/Exeter/SSM01.csv",stringsAsFactors = F))
-#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-  
-#   print(paste("QISI MSE:", sum((msynth$result - check$result)^2)/prod(dim(msynth$result))))
-#   #print(paste("QISI MSE:", sum((msynthi - check$result)^2)/prod(dim(msynthi))))
-  
-#   saved = msynth
-#   stopifnot(msynth$conv)
-#   table = flatten(msynth$result, c("OA", "SEX", "AGE", "ETH"))
-
-#   checkMicrosynthesis(oa, eth, msynth, table, mye, ageSex) 
-
-#   return(table)
-# }
+    # TODO consistency checks 
+    return table    
 
   def __get_census_data(self):
 
@@ -139,6 +115,9 @@ class SequentialMicrosynthesis:
                     "geography": area_codes}
     # problem - data only available at MSOA and above
     DC2101EW = self.data_api.get_data(table, table_internal, query_params)
+
+    self.geog_map = DC1117EW.GEOGRAPHY_CODE.unique()
+    self.eth_map = DC2101EW.C_ETHPUK11.unique()
 
     n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
     n_sex = len(DC1117EW.C_SEX.unique())
@@ -215,10 +194,3 @@ def create_age_sex_marginal(mye, lad):
   marginal = Utils.unlistify(tmp, ["GENDER", "AGE"], [2,86], "OBS_VALUE")
   return marginal
 
-
-# nLADs = length(unique(mye12$GEOGRAPHY_CODE))
-
-# # Now have consistent estimates for 2011-2016 by gender by age by LAD
-
-# oaProp = apply(cen11, 1, sum) / sum(cen11)
-# ethProp = apply(cen11, 4, sum) / sum(cen11)
