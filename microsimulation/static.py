@@ -8,6 +8,7 @@ import microsimulation.utils as Utils
 
 class SequentialMicrosynthesis:
   """
+  Static microsimulation based on a sequence of microsyntheses
   Performs a sequence of static microsyntheses using census data as a seed populations and mid-year-estimates as marginal constraints
   This is the simplest microsimulation model and is intended as a comparison/calibration for Monte-Carlo based microsimulation
   """
@@ -19,11 +20,12 @@ class SequentialMicrosynthesis:
     # convert input string to enum
     self.resolution = resolution
 
+    # (down)load the mid-year estimates 
+    # TODO why is e.g. City of London missing
+    self.__get_mye_data()
+
     # (down)load the census 2011 tables
     self.__get_census_data()
-
-    # (down)load the mid-year estimates 
-    self.__get_mye_data()
 
   def run(self, startYear, endYear):
 
@@ -36,8 +38,67 @@ class SequentialMicrosynthesis:
     if endYear > 2016:
       raise ValueError("2016 is the current latest supported end year")
 
+    # Census 2011 proportions for geography and ethnicity
+    oaProp = self.cen11.sum((1,2,3)) / self.cen11.sum()
+    ethProp = self.cen11.sum((0,1,2)) / self.cen11.sum()
+
+    print("Starting microsynthesis sequence...")
     for y in range(startYear, endYear+1):
       print(y)
+      msynth = self.microsynthesise(y, oaProp, ethProp)
+      #write.csv(msynth, "../data/SSM.csv", row.names = F)
+
+
+  def microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
+    ageSex = create_age_sex_marginal(self.mye[year], self.region) 
+
+    # convert proportions/probabilities to integer frequencies
+    oa = hl.prob2IntFreq(oaProp, ageSex.sum())["freq"]
+    eth = hl.prob2IntFreq(ethProp, ageSex.sum())["freq"]
+    # combine the above into a 2d marginal using QIS-I and census 2011 data as the seed
+    oa_eth = hl.qisi(self.cen11.sum((1,2)).astype(float), [np.array([0]),np.array([1])], [oa, eth])
+    assert oa_eth["conv"]
+
+    # now the full seeded microsynthesis
+    msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], ageSex])
+    print(msynth)
+    assert msynth["conv"]
+#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
+
+# microsynthesise = function(oaProp, ethProp, mye, LAD, cen) {
+  
+#   # MYE for LA gives age-sex marginal
+#   ageSex = createAgeSexMarginal(mye, LAD)
+  
+#   # rescale OA & eth marginals according to MYE data and integerising,
+#   oa = humanleague::prob2IntFreq(oaProp, sum(ageSex))$freq
+#   eth = humanleague::prob2IntFreq(ethProp, sum(ageSex))$freq
+#   # combine the above into a 2d marginal using QIS-I
+#   oa_eth = humanleague::qisi(apply(cen11, c(1,4), sum), list(1,2), list(oa, eth))
+#   stopifnot(oa_eth$conv)
+  
+#   # 6. apply QISI
+#   #msynth = humanleague::qisi(cen11, list(c(1),c(2,3),c(4)), list(oa, ageSex, eth))
+#   #msynth = humanleague::qisi(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
+#   # Much faster, for testing
+#   # is this good enough? (we've captured the geog-eth census11 structure in the oa_eth marginal 
+#   # probably not - mean sq error (vs IPF) is ~100x higher than QISI
+#   #msynth = humanleague::qis(list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
+#   msynth = humanleague::qisi(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
+#   #msynthi = xtabs(~OA+SEX+AGE+ETH, read.csv("../data/Exeter/SSM01.csv",stringsAsFactors = F))
+#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
+  
+#   print(paste("QISI MSE:", sum((msynth$result - check$result)^2)/prod(dim(msynth$result))))
+#   #print(paste("QISI MSE:", sum((msynthi - check$result)^2)/prod(dim(msynthi))))
+  
+#   saved = msynth
+#   stopifnot(msynth$conv)
+#   table = flatten(msynth$result, c("OA", "SEX", "AGE", "ETH"))
+
+#   checkMicrosynthesis(oa, eth, msynth, table, mye, ageSex) 
+
+#   return(table)
+# }
 
   def __get_census_data(self):
 
@@ -79,9 +140,6 @@ class SequentialMicrosynthesis:
     # problem - data only available at MSOA and above
     DC2101EW = self.data_api.get_data(table, table_internal, query_params)
 
-    # cen11sa = xtabs(OBS_VALUE~GEOGRAPHY_CODE+C_SEX+C_AGE, DC1117EW)
-    # cen11se = xtabs(OBS_VALUE~GEOGRAPHY_CODE+C_SEX+C_ETHPUK11, DC2101EW)
-
     n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
     n_sex = len(DC1117EW.C_SEX.unique())
     n_age = len(DC1117EW.C_AGE.unique())
@@ -118,113 +176,45 @@ class SequentialMicrosynthesis:
     self.mye = {}
 
     queryParams["date"] = "latestMINUS15"
-    self.mye[2001] = self.data_api.get_data("MYE01EW", table_internal, queryParams)
+    self.mye[2001] = Utils.adjust_mye_age(self.data_api.get_data("MYE01EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS14"
-    self.mye[2002] = self.data_api.get_data("MYE02EW", table_internal, queryParams)
+    self.mye[2002] = Utils.adjust_mye_age(self.data_api.get_data("MYE02EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS13"
-    self.mye[2003] = self.data_api.get_data("MYE03EW", table_internal, queryParams)
+    self.mye[2003] = Utils.adjust_mye_age(self.data_api.get_data("MYE03EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS12"
-    self.mye[2004] = self.data_api.get_data("MYE04EW", table_internal, queryParams)
+    self.mye[2004] = Utils.adjust_mye_age(self.data_api.get_data("MYE04EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS11"
-    self.mye[2005] = self.data_api.get_data("MYE05EW", table_internal, queryParams)
+    self.mye[2005] = Utils.adjust_mye_age(self.data_api.get_data("MYE05EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS10"
-    self.mye[2006] = self.data_api.get_data("MYE06EW", table_internal, queryParams)
+    self.mye[2006] = Utils.adjust_mye_age(self.data_api.get_data("MYE06EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS9"
-    self.mye[2007] = self.data_api.get_data("MYE07EW", table_internal, queryParams)
+    self.mye[2007] = Utils.adjust_mye_age(self.data_api.get_data("MYE07EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS8"
-    self.mye[2008] = self.data_api.get_data("MYE08EW", table_internal, queryParams)
+    self.mye[2008] = Utils.adjust_mye_age(self.data_api.get_data("MYE08EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS7"
-    self.mye[2009] = self.data_api.get_data("MYE09EW", table_internal, queryParams)
+    self.mye[2009] = Utils.adjust_mye_age(self.data_api.get_data("MYE09EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS6"
-    self.mye[2010] = self.data_api.get_data("MYE10EW", table_internal, queryParams)
+    self.mye[2010] = Utils.adjust_mye_age(self.data_api.get_data("MYE10EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS5"
-    self.mye[2011] = self.data_api.get_data("MYE11EW", table_internal, queryParams)
+    self.mye[2011] = Utils.adjust_mye_age(self.data_api.get_data("MYE11EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS4"
-    self.mye[2012] = self.data_api.get_data("MYE12EW", table_internal, queryParams)
+    self.mye[2012] = Utils.adjust_mye_age(self.data_api.get_data("MYE12EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS3"
-    self.mye[2013] = self.data_api.get_data("MYE13EW", table_internal, queryParams)
+    self.mye[2013] = Utils.adjust_mye_age(self.data_api.get_data("MYE13EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS2"
-    self.mye[2014] = self.data_api.get_data("MYE14EW", table_internal, queryParams)
+    self.mye[2014] = Utils.adjust_mye_age(self.data_api.get_data("MYE14EW", table_internal, queryParams))
     queryParams["date"] = "latestMINUS1"
-    self.mye[2015] = self.data_api.get_data("MYE15EW", table_internal, queryParams)
+    self.mye[2015] = Utils.adjust_mye_age(self.data_api.get_data("MYE15EW", table_internal, queryParams))
     queryParams["date"] = "latest"
-    self.mye[2016] = self.data_api.get_data("MYE16EW", table_internal, queryParams)
-
-    adjust_mye_age(self.mye[2016])
-    #self.mye[2016].to_csv("mye.csv")
-
-def adjust_mye_age(myedata):
-  total = myedata.OBS_VALUE.sum()
-  print(total)
-  myedata.AGE -= 100
-  #print(myedata.head())
-  to_aggregate = myedata[myedata.AGE >= 86].copy()
-  myedata = myedata[myedata.AGE < 86].copy()
-
-  agg = to_aggregate.pivot_table(index=["GEOGRAPHY_CODE","GENDER"], values="OBS_VALUE", aggfunc=sum)
-  print(agg)
-  # remove age column
-  #to_aggregate = to_aggregate.drop('AGE', axis=1)
-  # aggregate by geog/gender
-  # to_aggregate["AGE"] = 86
-  # to_aggregate = to_aggregate.groupby(["GEOGRAPHY_CODE","GENDER"]).sum()
-  # print(to_aggregate)
-
-  agg.reset_index(level=["GEOGRAPHY_CODE","GENDER"])
-
-  #to_aggregate = to_aggregate.AGE.replace(531, 86)
-  #print(to_aggregate.head())
-
-  myedata = myedata.append(agg)
-
-  myedata.to_csv("mye.csv")
+    self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data("MYE16EW", table_internal, queryParams))
 
 
-# # Knock MYE data into shape
-# adjustMyeAge = function(df) {
-  
-#   # check we preserve the correct total
-#   total = sum(df$OBS_VALUE)
-  
-#   df$AGE = df$AGE - 100
-  
-#   # merge ages 85+ 
-#   df[df$AGE==86,]$OBS_VALUE = df[df$AGE==86,]$OBS_VALUE + df[df$AGE==87,]$OBS_VALUE + df[df$AGE==88,]$OBS_VALUE +
-#                               df[df$AGE==89,]$OBS_VALUE + df[df$AGE==90,]$OBS_VALUE + df[df$AGE==91,]$OBS_VALUE
-#   # remove now-duplicated rows
-#   df = df[df$AGE<87,]
-  
-#   # check total is preserved
-#   stopifnot(sum(df$OBS_VALUE) == total)
-  
-#   return(df)
-# }
+def create_age_sex_marginal(mye, lad):
+  # TODO remove gender and age size hard-coding...
+  tmp = mye[mye.GEOGRAPHY_CODE==lad].drop("GEOGRAPHY_CODE", axis=1)
+  marginal = Utils.unlistify(tmp, ["GENDER", "AGE"], [2,86], "OBS_VALUE")
+  return marginal
 
-
-# createAgeSexMarginal = function(df, LAD) {
-#   marginal = xtabs(OBS_VALUE~GENDER+AGE, df[df$GEOGRAPHY_CODE==LAD,])
-#   return(marginal)
-# }
-  #def create_age_sex_marginal(self, data, lad):
-  #  marginal = Utils.unlistify(data, data.columns, )
-
-
-# mye01 = adjustMyeAge(mye01)
-# mye02 = adjustMyeAge(mye02)
-# mye03 = adjustMyeAge(mye03)
-# mye04 = adjustMyeAge(mye04)
-# mye05 = adjustMyeAge(mye05)
-# mye06 = adjustMyeAge(mye06)
-# mye07 = adjustMyeAge(mye07)
-# mye08 = adjustMyeAge(mye08)
-# mye09 = adjustMyeAge(mye09)
-# mye10 = adjustMyeAge(mye10)
-# mye11 = adjustMyeAge(mye11)
-# mye12 = adjustMyeAge(mye12)
-# mye13 = adjustMyeAge(mye13)
-# mye14 = adjustMyeAge(mye14)
-# mye15 = adjustMyeAge(mye15)
-# mye16 = adjustMyeAge(mye16)
 
 # nLADs = length(unique(mye12$GEOGRAPHY_CODE))
 
