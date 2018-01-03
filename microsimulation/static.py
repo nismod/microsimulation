@@ -14,16 +14,13 @@ class SequentialMicrosynthesis(Common.Base):
   This is the simplest microsimulation model and is intended as a comparison/calibration for Monte-Carlo based microsimulation
   """
 
-  def __init__(self, region, resolution, cache_dir = "./cache"):
-    # self.data_api = Api.Nomisweb(cache_dir)
+  def __init__(self, region, resolution, cache_dir = "./cache", output_dir = "./data"):
 
-    # self.region = region
-    # # convert input string to enum
-    # self.resolution = resolution
     Common.Base.__init__(self, region, resolution, cache_dir)
 
+    self.output_dir = output_dir
+
     # (down)load the mid-year estimates 
-    # TODO why is e.g. City of London missing
     self.__get_mye_data()
 
     # (down)load the census 2011 tables
@@ -46,25 +43,28 @@ class SequentialMicrosynthesis(Common.Base):
 
     print("Starting microsynthesis sequence...")
     for y in range(startYear, endYear+1):
-      print(y)
-      msynth = self.microsynthesise(y, oaProp, ethProp)
+      out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
+      print("Generating ", out_file, "... ", sep="", end="", flush=True)
+      # TODO check file doesnt exist here? or in the script?
+      msynth = self.__microsynthesise(y, oaProp, ethProp)
+      print("OK")
+      msynth.to_csv(out_file)
 
-      msynth.to_csv("./data/ssm_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv")
       #write.csv(msynth, "../data/SSM.csv", row.names = F)
 
-  def microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
+  def __microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
 
-    ageSex = create_age_sex_marginal(self.mye[year], self.region) 
+    age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region) 
 
     # convert proportions/probabilities to integer frequencies
-    oa = hl.prob2IntFreq(oaProp, ageSex.sum())["freq"]
-    eth = hl.prob2IntFreq(ethProp, ageSex.sum())["freq"]
+    oa = hl.prob2IntFreq(oaProp, age_sex.sum())["freq"]
+    eth = hl.prob2IntFreq(ethProp, age_sex.sum())["freq"]
     # combine the above into a 2d marginal using QIS-I and census 2011 data as the seed
     oa_eth = hl.qisi(self.cen11.sum((1,2)).astype(float), [np.array([0]),np.array([1])], [oa, eth])
     assert oa_eth["conv"]
 
     # now the full seeded microsynthesis
-    msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], ageSex])
+    msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], age_sex])
     assert msynth["conv"]
     rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
     # TODO col names and remapped values
@@ -74,9 +74,27 @@ class SequentialMicrosynthesis(Common.Base):
     table.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1,87))
     table.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
 
-#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, ageSex))
-    # TODO consistency checks 
+#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, age_sex))
+    # consistency checks 
+    self.__check(table, age_sex, oa_eth["result"], year)
     return table    
+
+  def __check(self, table, age_sex, oa_eth, year):
+    # check area totals
+    areas = oa_eth.sum(1)
+    for i in range(0,len(areas)):
+      assert len(table[table.Area == self.geog_map[i]]) == areas[i]
+
+    # check ethnicity totals
+    eths = oa_eth.sum(0)
+    for i in range(0,len(eths)):
+      assert len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) == eths[i]
+    
+    # check gender and age totals
+    for s in [0,1]:
+      for a in range(0,86):
+        #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
+        assert len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]) == age_sex[s,a]
 
   def __get_census_data(self):
 
@@ -154,9 +172,4 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data("MYE16EW", table_internal, queryParams))
 
 
-def create_age_sex_marginal(mye, lad):
-  # TODO remove gender and age size hard-coding...
-  tmp = mye[mye.GEOGRAPHY_CODE==lad].drop("GEOGRAPHY_CODE", axis=1)
-  marginal = Utils.unlistify(tmp, ["GENDER", "AGE"], [2,86], "OBS_VALUE")
-  return marginal
 

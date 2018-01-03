@@ -12,17 +12,13 @@ class Microsimulation(Common.Base):
   Dynamic MC microsimulation 
   Performs a sequence of 1y timesteps evolving the population randomly according to prescribed rates of fertility, mortality and migration
   """
-  def __init__(self, region, resolution, cache_dir = "./cache"):
+  def __init__(self, region, resolution, cache_dir="./cache", output_dir ="./data"):
 
     # Seriously?
     #super(Microsimulation, self).__init__(region, resolution, cache_dir)
     Common.Base.__init__(self, region, resolution, cache_dir)
-    # self.region = region
-    # # convert input string to enum
-    # self.resolution = resolution
 
-    # # (down)load the census 2011 tables
-    # self.__get_census_data()
+    self.output_dir = output_dir
 
   def run(self, startYear, endYear):
 

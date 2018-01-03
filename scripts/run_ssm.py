@@ -8,6 +8,7 @@ import microsimulation.static as Static
 
 #assert humanleague.version() > 1
 CACHE_DIR = "./cache"
+OUTPUT_DIR = "./data"
 
 # The microsynthesis makes use of the following tables:
 def main(region, resolution):
@@ -20,11 +21,11 @@ def main(region, resolution):
   print("Static Microsimulation resolution:", resolution)
 
   # init microsynthesis
-  #try:
-  ssm = Static.SequentialMicrosynthesis(region, resolution, CACHE_DIR)
-  #except Exception as e:
-  #  print(e)
-  #  return
+  try:
+    ssm = Static.SequentialMicrosynthesis(region, resolution, CACHE_DIR, OUTPUT_DIR)
+  except Exception as e:
+    print(e)
+    return
 
   # generate the population
   #try:

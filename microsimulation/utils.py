@@ -3,6 +3,11 @@
 import numpy as np
 import pandas as pd
 
+def create_age_sex_marginal(mye, lad):
+  # TODO remove gender and age size hard-coding...
+  tmp = mye[mye.GEOGRAPHY_CODE==lad].drop("GEOGRAPHY_CODE", axis=1)
+  marginal = unlistify(tmp, ["GENDER", "AGE"], [2,86], "OBS_VALUE")
+  return marginal
 
 # this is a copy-paste from household_microsynth
 def unlistify(table, columns, sizes, values):
