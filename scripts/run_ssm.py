@@ -15,6 +15,7 @@ def main(region, resolution):
   # # start timing
   start_time = time.time()
 
+  # TODO will fail if region specified as text 
   print("Static Microsimulation region:", region)
   print("Static Microsimulation resolution:", resolution)
 
