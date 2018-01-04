@@ -103,21 +103,23 @@ class SequentialMicrosynthesis(Common.Base):
     self.geog_map = DC1117EW.GEOGRAPHY_CODE.unique()
     self.eth_map = DC2101EW.C_ETHPUK11.unique()
 
-    n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
-    n_sex = len(DC1117EW.C_SEX.unique())
-    n_age = len(DC1117EW.C_AGE.unique())
-    cen11sa = Utils.unlistify(DC1117EW, ["GEOGRAPHY_CODE","C_SEX","C_AGE"], [n_geog,n_sex,n_age], "OBS_VALUE")
+    self.cen11 = Utils.microsynthesise(DC1117EW, DC2101EW)
 
-    n_eth = len(DC2101EW.C_ETHPUK11.unique())
-    cen11se = Utils.unlistify(DC2101EW, ["GEOGRAPHY_CODE","C_SEX","C_ETHPUK11"], [n_geog,n_sex,n_eth], "OBS_VALUE")
+    # n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
+    # n_sex = len(DC1117EW.C_SEX.unique())
+    # n_age = len(DC1117EW.C_AGE.unique())
+    # cen11sa = Utils.unlistify(DC1117EW, ["GEOGRAPHY_CODE","C_SEX","C_AGE"], [n_geog,n_sex,n_age], "OBS_VALUE")
 
-    # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
-    print("Synthesising seed population...", end='')
-    msynth = hl.qis([np.array([0,1,2]),np.array([0,1,3])], [cen11sa, cen11se])
-    assert msynth["conv"]
-    print("OK")
+    # n_eth = len(DC2101EW.C_ETHPUK11.unique())
+    # cen11se = Utils.unlistify(DC2101EW, ["GEOGRAPHY_CODE","C_SEX","C_ETHPUK11"], [n_geog,n_sex,n_eth], "OBS_VALUE")
+
+    # # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
+    # print("Synthesising seed population...", end='')
+    # msynth = hl.qis([np.array([0,1,2]),np.array([0,1,3])], [cen11sa, cen11se])
+    # assert msynth["conv"]
+    # print("OK")
     # TODO more checks?
-    self.cen11 = msynth["result"]
+    #self.cen11 = msynth["result"]
 
   def __get_mye_data(self):
     """
@@ -170,6 +172,4 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye[2015] = Utils.adjust_mye_age(self.data_api.get_data("MYE15EW", table_internal, queryParams))
     queryParams["date"] = "latest"
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data("MYE16EW", table_internal, queryParams))
-
-
 

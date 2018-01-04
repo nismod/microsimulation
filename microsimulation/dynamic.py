@@ -20,8 +20,13 @@ class Microsimulation(Common.Base):
 
     self.output_dir = output_dir
 
+    # load fertility by LAD by age by eth
+    # load mortality by LAD by sex by age by eth
+    # load migration by LAD by age
+
   def run(self, startYear, endYear):
 
+    # TODO resolve how to deal with pre-2011 years (2001 data)
     if startYear > endYear:
       raise ValueError("end year must be greater than or equal to start year")
 
@@ -34,6 +39,23 @@ class Microsimulation(Common.Base):
     #super(Microsimulation, self).get_census_data() required for nontrivial inheritance
     (DC1117EW, DC2101EW) = self.get_census_data()
 
-    print(len(DC1117EW))
-    print(len(DC2101EW))
+    self.geog_map = DC1117EW.GEOGRAPHY_CODE.unique()
+    self.eth_map = DC2101EW.C_ETHPUK11.unique()
+
+    self.msynth = Utils.microsynthesise(DC1117EW, DC2101EW)
+
+    # Census 2011 proportions for geography and ethnicity
+    oaProp = self.msynth.sum((1,2,3)) / self.msynth.sum()
+    ethProp = self.msynth.sum((0,1,2)) / self.msynth.sum()
+
+    print("Starting microsimulation...")
+    msim = self.msynth
+    for y in range(startYear, endYear+1):
+      out_file = self.output_dir + "/msim_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
+      print("Generating ", out_file, "... ", sep="", end="", flush=True)
+      # TODO check file doesnt exist here? or in the script?
+      #msim = self.__timestep(msim, oaProp, ethProp)
+      print("OK")
+      #msim.to_csv(out_file)
+    #print(self.msynth)
     # print(self.resolution)

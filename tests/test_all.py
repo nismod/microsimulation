@@ -24,5 +24,4 @@ class Test(TestCase):
     microsim = Dynamic.Microsimulation(region, resolution, cache)
     microsim.run(2011, 2012)
     #self.assertTrue(False)
-    #print(microsim.mye[2016])
 
