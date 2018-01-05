@@ -23,6 +23,21 @@ class Microsimulation(Common.Base):
     # load fertility by LAD by age by eth
     # load mortality by LAD by sex by age by eth
     # load migration by LAD by age
+    # TODO UK-wide data (temporarily using Tower Hamlets data only)
+    fertility_table = pd.read_csv("./persistent_data/tmp_fertility.csv")
+    mortality_table = pd.read_csv("./persistent_data/tmp_mortality.csv")
+
+    print(fertility_table.head())
+    print(mortality_table.head())
+    n_age = len(fertility_table.Age.unique())
+    n_eth = len(fertility_table.Ethnicity.unique())
+    n_sex = len(fertility_table.Sex.unique())
+
+    self.fertility = Utils.unlistify(fertility_table, ["Age", "Ethnicity", "Sex"], [n_age, n_eth, n_sex], "Rate")
+    print(self.fertility)
+    self.mortality = Utils.unlistify(mortality_table, ["Sex", "Age", "Ethnicity"], [n_sex, n_age, n_eth], "Rate")
+    print(self.mortality)
+
 
   def run(self, startYear, endYear):
 
@@ -42,20 +57,30 @@ class Microsimulation(Common.Base):
     self.geog_map = DC1117EW.GEOGRAPHY_CODE.unique()
     self.eth_map = DC2101EW.C_ETHPUK11.unique()
 
-    self.msynth = Utils.microsynthesise(DC1117EW, DC2101EW)
+    msynth = Utils.microsynthesise(DC1117EW, DC2101EW)
 
-    # Census 2011 proportions for geography and ethnicity
-    oaProp = self.msynth.sum((1,2,3)) / self.msynth.sum()
-    ethProp = self.msynth.sum((0,1,2)) / self.msynth.sum()
+    rawtable = hl.flatten(msynth) #, c("OA", "SEX", "AGE", "ETH"))
+    # col names and remapped values
+    self.msim = pd.DataFrame(columns=["Area","DC1117EW_C_SEX","DC1117EW_C_AGE","DC2101EW_C_ETHPUK11"])
+    self.msim.Area = Utils.remap(rawtable[0], self.geog_map)
+    self.msim.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1,2])
+    self.msim.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1,87))
+    self.msim.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
 
     print("Starting microsimulation...")
-    msim = self.msynth
     for y in range(startYear, endYear+1):
       out_file = self.output_dir + "/msim_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
       print("Generating ", out_file, "... ", sep="", end="", flush=True)
       # TODO check file doesnt exist here? or in the script?
-      #msim = self.__timestep(msim, oaProp, ethProp)
+      self.msim = self.__timestep(self.msim)
       print("OK")
-      #msim.to_csv(out_file)
+      self.msim.to_csv(out_file)
     #print(self.msynth)
     # print(self.resolution)
+
+  # Timestepping (1y hard-coded)
+  def __timestep(self, msim):
+    # TODO
+    n = len(msim)
+
+    return msim

@@ -55,22 +55,5 @@ class Base(object):
 
     return (DC1117EW, DC2101EW)
 
-  
-  # def microsynthesise(self, DC1117EW, DC2101EW):
-
-  #   n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
-  #   n_sex = len(DC1117EW.C_SEX.unique())
-  #   n_age = len(DC1117EW.C_AGE.unique())
-  #   cen11sa = Utils.unlistify(DC1117EW, ["GEOGRAPHY_CODE","C_SEX","C_AGE"], [n_geog,n_sex,n_age], "OBS_VALUE")
-
-  #   n_eth = len(DC2101EW.C_ETHPUK11.unique())
-  #   cen11se = Utils.unlistify(DC2101EW, ["GEOGRAPHY_CODE","C_SEX","C_ETHPUK11"], [n_geog,n_sex,n_eth], "OBS_VALUE")
-
-  #   # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
-  #   print("Synthesising seed population...", end='')
-  #   msynth = hl.qis([np.array([0,1,2]),np.array([0,1,3])], [cen11sa, cen11se])
-  #   assert msynth["conv"]
-  #   print("OK")
-  #   return msynth["result"]
 
   

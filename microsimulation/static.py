@@ -67,7 +67,7 @@ class SequentialMicrosynthesis(Common.Base):
     msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], age_sex])
     assert msynth["conv"]
     rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
-    # TODO col names and remapped values
+    # col names and remapped values
     table = pd.DataFrame(columns=["Area","DC1117EW_C_SEX","DC1117EW_C_AGE","DC2101EW_C_ETHPUK11"])
     table.Area = Utils.remap(rawtable[0], self.geog_map)
     table.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1,2])
@@ -104,22 +104,6 @@ class SequentialMicrosynthesis(Common.Base):
     self.eth_map = DC2101EW.C_ETHPUK11.unique()
 
     self.cen11 = Utils.microsynthesise(DC1117EW, DC2101EW)
-
-    # n_geog = len(DC1117EW.GEOGRAPHY_CODE.unique())
-    # n_sex = len(DC1117EW.C_SEX.unique())
-    # n_age = len(DC1117EW.C_AGE.unique())
-    # cen11sa = Utils.unlistify(DC1117EW, ["GEOGRAPHY_CODE","C_SEX","C_AGE"], [n_geog,n_sex,n_age], "OBS_VALUE")
-
-    # n_eth = len(DC2101EW.C_ETHPUK11.unique())
-    # cen11se = Utils.unlistify(DC2101EW, ["GEOGRAPHY_CODE","C_SEX","C_ETHPUK11"], [n_geog,n_sex,n_eth], "OBS_VALUE")
-
-    # # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
-    # print("Synthesising seed population...", end='')
-    # msynth = hl.qis([np.array([0,1,2]),np.array([0,1,3])], [cen11sa, cen11se])
-    # assert msynth["conv"]
-    # print("OK")
-    # TODO more checks?
-    #self.cen11 = msynth["result"]
 
   def __get_mye_data(self):
     """
