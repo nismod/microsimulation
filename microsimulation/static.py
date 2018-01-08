@@ -14,6 +14,9 @@ class SequentialMicrosynthesis(Common.Base):
   This is the simplest microsimulation model and is intended as a comparison/calibration for Monte-Carlo based microsimulation
   """
 
+  # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
+  SNPP_YEAR = 2014
+
   def __init__(self, region, resolution, cache_dir = "./cache", output_dir = "./data"):
 
     Common.Base.__init__(self, region, resolution, cache_dir)
@@ -22,6 +25,9 @@ class SequentialMicrosynthesis(Common.Base):
 
     # (down)load the mid-year estimates 
     self.__get_mye_data()
+
+    # load the subnational population projections 
+    self.__get_snpp_data()
 
     # (down)load the census 2011 tables
     self.__get_census_data()
@@ -34,8 +40,8 @@ class SequentialMicrosynthesis(Common.Base):
     if startYear < 2001:
       raise ValueError("2001 is the earliest supported start year")
       
-    if endYear > 2016:
-      raise ValueError("2016 is the current latest supported end year")
+    if endYear > SequentialMicrosynthesis.SNPP_YEAR + 25:
+      raise ValueError("2039 is the current latest supported end year")
 
     # Census 2011 proportions for geography and ethnicity
     oaProp = self.cen11.sum((1,2,3)) / self.cen11.sum()
@@ -44,7 +50,8 @@ class SequentialMicrosynthesis(Common.Base):
     print("Starting microsynthesis sequence...")
     for y in range(startYear, endYear+1):
       out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
-      print("Generating ", out_file, "... ", sep="", end="", flush=True)
+
+      print("Generating ", out_file, " [MYE] " if y < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ", sep="", end="", flush=True)
       # TODO check file doesnt exist here? or in the script?
       msynth = self.__microsynthesise(y, oaProp, ethProp)
       print("OK")
@@ -54,7 +61,10 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
 
-    age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region) 
+    if year < self.SNPP_YEAR:
+      age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region, "OBS_VALUE") 
+    else:
+      age_sex = Utils.create_age_sex_marginal(self.snpp, self.region, "X"+str(year)) 
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oaProp, age_sex.sum())["freq"]
@@ -157,3 +167,12 @@ class SequentialMicrosynthesis(Common.Base):
     queryParams["date"] = "latest"
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data("MYE16EW", table_internal, queryParams))
 
+  def __get_snpp_data(self):
+    """
+    Loads preprocessed raw subnational population projection data (currently 2014-based)
+    Download from: https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2014based/snppz1population.zip
+    See the R script scripts/preprocess_snpp.R 
+    """
+    self.snpp = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv")
+
+    

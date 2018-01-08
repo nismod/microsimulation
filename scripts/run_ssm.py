@@ -28,11 +28,11 @@ def main(region, resolution):
     return
 
   # generate the population
-  #try:
-  ssm.run(startYear, endYear)
-  #except Exception as e:
-  #  print(e)
-  #  return
+  try:
+    ssm.run(startYear, endYear)
+  except Exception as e:
+    print("ERROR:", e)
+    return
 
   print("Done. Exec time(s): ", time.time() - start_time)
 

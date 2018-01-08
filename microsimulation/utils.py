@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 import humanleague as hl
 
-def create_age_sex_marginal(mye, lad):
+def create_age_sex_marginal(mye, lad, value_column):
   # TODO remove gender and age size hard-coding...
   tmp = mye[mye.GEOGRAPHY_CODE==lad].drop("GEOGRAPHY_CODE", axis=1)
-  marginal = unlistify(tmp, ["GENDER", "AGE"], [2,86], "OBS_VALUE")
+  marginal = unlistify(tmp, ["GENDER", "AGE"], [2,86], value_column)
   return marginal
 
 # this is a copy-paste from household_microsynth
