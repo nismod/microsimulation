@@ -3,17 +3,17 @@
 # microsimulation
 Static and dynamic, population and household, microsimulation models. Current status:
 - [X] static population microsimulation: refinement/testing
-- [ ] dynamic population microsimulation: in prototype, to be reimplemented here
+- [ ] dynamic population microsimulation: in prototype, reimplementation in progress
 - [ ] househould microsimulation: drawing board
 
 ## Introduction
 ### Static Microsimulation
-This refers to a sequence of microsyntheses based on ONS mid-year-estimates.
-- limited categories available.
-- cannot be used to project into the future - main purpose is to calibrate dynamic microsimulation, particularly in post-census period 2012-2016.
+This refers to a sequence of microsyntheses, seeded with 2011 census data, with marginals from ONS mid-year-estimates (2001-2013) and ONS sub-national population projections (2014-2039).
+- limited categories available: gender, age, ethnicity.
+- highest geographical resolution is currently limited to MSOA.
 
 ### Dynamic Microsimulation
-This refers to a stochastic simulation of individual elements (persons or households) in time.
+This refers to a stochastic simulation of individual elements (persons or households) in time using a Monte-Carlo approach.
 Based on provided fertility, mortality and migration data and guided by static microsimulation above.
 
 ## Setup
@@ -45,6 +45,6 @@ scripts/run_ssm.py <region(s)> <resolution> <start_year> <end_year>
 ```
 where region can be a one or more local authorities (or one of England, EnglandWales, GB, UK), specified by ONS/GSS code (e.g. E09000001 for the City of London). Resolution (for now) must be MSOA11. Start and end years must be in the range 2001-2016.
 ```
-scripts/run_microsynth.py E09000001 MSOA11 2001 2016
+scripts/run_microsynth.py E09000001 MSOA11 2001 2039
 ```
-NB Runtime for  medium-sized local authgority for all 16 years is likely to be around 24h.
+NB Runtime for a medium-sized local authgority for all 39 years is likely to be well over 24h.
