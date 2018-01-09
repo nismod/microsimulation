@@ -1,3 +1,4 @@
+import os.path
 import numpy as np
 import pandas as pd
 #from random import randint
@@ -50,15 +51,16 @@ class SequentialMicrosynthesis(Common.Base):
     print("Starting microsynthesis sequence...")
     for y in range(startYear, endYear+1):
       out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
-
-      print("Generating ", out_file, " [MYE] " if y < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ", sep="", end="", flush=True)
-      # TODO check file doesnt exist here? or in the script?
-      msynth = self.__microsynthesise(y, oaProp, ethProp)
-      print("OK")
-      msynth.to_csv(out_file)
-
-      #write.csv(msynth, "../data/SSM.csv", row.names = F)
-
+      # this is inconsistent with the household microsynth (batch script checks whether output exists)
+      # TODO make them consistent?
+      if not os.path.isfile(out_file):
+        print("Generating ", out_file, " [MYE] " if y < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ", sep="", end="", flush=True)
+        msynth = self.__microsynthesise(y, oaProp, ethProp)
+        print("OK")
+        msynth.to_csv(out_file)
+      else:
+        print("Already exists:", out_file)
+        
   def __microsynthesise(self, year, oaProp, ethProp): #LAD=self.region
 
     if year < self.SNPP_YEAR:

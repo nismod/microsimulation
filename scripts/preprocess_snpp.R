@@ -12,7 +12,6 @@ adjustSnppAge = function(df) {
   # AGE_GROUP -> AGE
   colnames(df)[colnames(df) == "AGE_GROUP"] = "AGE"
   
-  print(colnames(df))
   # remove non-numeric
   df = df[df$AGE != "All ages",] 
   df$AGE[df$AGE == "90 and over"] = "90"
