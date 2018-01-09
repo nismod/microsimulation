@@ -19,7 +19,7 @@ fi
 
 source activate testenv1
 
-qsub_params="-l h_rt=8:0:0"
+qsub_params="-l h_rt=36:0:0"
 
 outfile="hh_"$region"_"$resolution".csv"
 if [ ! -f $outfile ]; then

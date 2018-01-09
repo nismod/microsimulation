@@ -40,11 +40,11 @@ W06000021 W06000022 W06000023 W06000024"
 resolution="MSOA11"
 
 # max run time (NB Birmingham takes longest at ~?h)
-qsub_params="-l h_rt=8:0:0"
+qsub_params="-l h_rt=36:0:0"
 
 # TODO better check for years
 for region in $regions; do
-  outfile="ssm_"$region"_"$resolution"_2016.csv"
+  outfile="./data/ssm_"$region"_"$resolution"_2001.csv"
   if [ ! -f $outfile ]; then
     export REGION=$region
     echo Submitting job for $REGION
