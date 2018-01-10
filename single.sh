@@ -19,14 +19,13 @@ fi
 
 source activate testenv1
 
-qsub_params="-l h_rt=36:0:0"
+qsub_params="-l h_rt=2:0:0"
 
 outfile="hh_"$region"_"$resolution".csv"
 if [ ! -f $outfile ]; then
   export REGION=$region
   echo Submitting job for $REGION
   qsub $qsub_params run.sh
-  sleep 10
 else
   echo $region done, not resubmitting
 fi
