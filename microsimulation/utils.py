@@ -1,7 +1,6 @@
 # utility functions
 
 import numpy as np
-import pandas as pd
 import humanleague as hl
 
 def create_age_sex_marginal(mye, lad, value_column):

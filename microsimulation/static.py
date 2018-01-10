@@ -18,11 +18,12 @@ class SequentialMicrosynthesis(Common.Base):
   # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
   SNPP_YEAR = 2014
 
-  def __init__(self, region, resolution, cache_dir = "./cache", output_dir = "./data"):
+  def __init__(self, region, resolution, cache_dir = "./cache", output_dir = "./data", fast_mode = False):
 
     Common.Base.__init__(self, region, resolution, cache_dir)
 
     self.output_dir = output_dir
+    self.fast_mode = fast_mode
 
     # (down)load the mid-year estimates 
     self.__get_mye_data()
@@ -47,6 +48,9 @@ class SequentialMicrosynthesis(Common.Base):
     # Census 2011 proportions for geography and ethnicity
     oaProp = self.cen11.sum((1,2,3)) / self.cen11.sum()
     ethProp = self.cen11.sum((0,1,2)) / self.cen11.sum()
+
+    if self.fast_mode:
+      print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
     print("Starting microsynthesis sequence...")
     for y in range(startYear, endYear+1):
@@ -73,12 +77,21 @@ class SequentialMicrosynthesis(Common.Base):
     eth = hl.prob2IntFreq(ethProp, age_sex.sum())["freq"]
     # combine the above into a 2d marginal using QIS-I and census 2011 data as the seed
     oa_eth = hl.qisi(self.cen11.sum((1,2)).astype(float), [np.array([0]),np.array([1])], [oa, eth])
-    assert oa_eth["conv"]
+    if not (type(oa_eth) is dict and oa_eth["conv"]):
+      raise RuntimeError("oa_eth did not converge")
 
     # now the full seeded microsynthesis
-    msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], age_sex])
-    assert msynth["conv"]
+    if self.fast_mode:
+      msynth = hl.ipf(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
+    else:
+      msynth = hl.qisi(self.cen11.astype(float), [np.array([0,3]),np.array([1,2])], [oa_eth["result"], age_sex])
+    if not msynth["conv"]:
+      raise RuntimeError("msynth did not converge")
+
+    if self.fast_mode:
+      msynth["result"] = np.around(msynth["result"]).astype(int)
     rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
+
     # col names and remapped values
     table = pd.DataFrame(columns=["Area","DC1117EW_C_SEX","DC1117EW_C_AGE","DC2101EW_C_ETHPUK11"])
     table.Area = Utils.remap(rawtable[0], self.geog_map)
@@ -86,27 +99,37 @@ class SequentialMicrosynthesis(Common.Base):
     table.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1,87))
     table.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
 
-#   check = humanleague::ipf(cen11, list(c(1,4),c(2,3)), list(oa_eth$result, age_sex))
-    # consistency checks 
+    # consistency checks (in fast mode just report discrepancies)
     self.__check(table, age_sex, oa_eth["result"], year)
     return table    
 
   def __check(self, table, age_sex, oa_eth, year):
+
+    failures = []
+
     # check area totals
     areas = oa_eth.sum(1)
     for i in range(0,len(areas)):
-      assert len(table[table.Area == self.geog_map[i]]) == areas[i]
+      if len(table[table.Area == self.geog_map[i]]) != areas[i]:
+        failures.append("Area " + self.geog_map[i] + " total mismatch: " + str(len(table[table.Area == self.geog_map[i]])) + " vs " + str(areas[i]))
 
     # check ethnicity totals
     eths = oa_eth.sum(0)
     for i in range(0,len(eths)):
-      assert len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) == eths[i]
-    
+      if len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) != eths[i]:
+        failures.append("Ethnicity " + str(self.eth_map[i]) + " total mismatch: " + str(len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]])) + " vs " + str(eths[i]))
+        
     # check gender and age totals
     for s in [0,1]:
       for a in range(0,86):
         #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
-        assert len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]) == age_sex[s,a]
+        if len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]) != age_sex[s,a]:
+          failures.append("Age-gender " + str(a+1) + "/" + str(s+1) + " total mismatch: " 
+            + str(len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)])) + " vs " + str(age_sex[s,a]))
+
+    if failures and not self.fast_mode:
+      print("\n".join(failures))
+      raise RuntimeError("Consistency checks failed, see log for further details")
 
   def __get_census_data(self):
 
