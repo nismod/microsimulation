@@ -1,21 +1,24 @@
-import numpy as np
+"""
+Dynamic Microsimulation (Monte-Carlo based projection of population)
+"""
+
+#import numpy as np
 import pandas as pd
 #from random import randint
 
-import ukcensusapi.Nomisweb as Api
+#import ukcensusapi.Nomisweb as Api
 import humanleague as hl
 import microsimulation.utils as Utils
 import microsimulation.common as Common
 
 class Microsimulation(Common.Base):
   """
-  Dynamic MC microsimulation 
-  Performs a sequence of 1y timesteps evolving the population randomly according to prescribed rates of fertility, mortality and migration
+  Dynamic MC microsimulation
+  Performs a sequence of 1y timesteps evolving the population randomly according to prescribed rates of fertility,
+  mortality and migration
   """
-  def __init__(self, region, resolution, cache_dir="./cache", output_dir ="./data"):
+  def __init__(self, region, resolution, cache_dir="./cache", output_dir="./data"):
 
-    # Seriously?
-    #super(Microsimulation, self).__init__(region, resolution, cache_dir)
     Common.Base.__init__(self, region, resolution, cache_dir)
 
     self.output_dir = output_dir
@@ -38,38 +41,40 @@ class Microsimulation(Common.Base):
     self.mortality = Utils.unlistify(mortality_table, ["Sex", "Age", "Ethnicity"], [n_sex, n_age, n_eth], "Rate")
     print(self.mortality)
 
+    (dc1117ew, dc2101ew) = self.get_census_data()
 
-  def run(self, startYear, endYear):
+    self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
+    self.eth_map = dc2101ew.C_ETHPUK11.unique()
 
-    # TODO resolve how to deal with pre-2011 years (2001 data)
-    if startYear > endYear:
-      raise ValueError("end year must be greater than or equal to start year")
-
-    if startYear < 2001:
-      raise ValueError("2001 is the earliest supported start year")
-      
-    if endYear > 2016:
-      raise ValueError("2016 is the current latest supported end year")
-
-    #super(Microsimulation, self).get_census_data() required for nontrivial inheritance
-    (DC1117EW, DC2101EW) = self.get_census_data()
-
-    self.geog_map = DC1117EW.GEOGRAPHY_CODE.unique()
-    self.eth_map = DC2101EW.C_ETHPUK11.unique()
-
-    msynth = Utils.microsynthesise(DC1117EW, DC2101EW)
+    msynth = Utils.microsynthesise_seed(dc1117ew, dc2101ew)
 
     rawtable = hl.flatten(msynth) #, c("OA", "SEX", "AGE", "ETH"))
     # col names and remapped values
-    self.msim = pd.DataFrame(columns=["Area","DC1117EW_C_SEX","DC1117EW_C_AGE","DC2101EW_C_ETHPUK11"])
+    self.msim = pd.DataFrame(columns=["Area", "DC1117EW_C_SEX", "DC1117EW_C_AGE", "DC2101EW_C_ETHPUK11"])
     self.msim.Area = Utils.remap(rawtable[0], self.geog_map)
-    self.msim.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1,2])
-    self.msim.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1,87))
+    self.msim.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1, 2])
+    self.msim.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1, 87))
     self.msim.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
 
+
+  def run(self, start_year, end_year):
+    """
+    Project the population
+    """
+
+    # TODO resolve how to deal with pre-2011 years (2001 data)
+    if start_year > end_year:
+      raise ValueError("end year must be greater than or equal to start year")
+
+    if start_year < 2001:
+      raise ValueError("2001 is the earliest supported start year")
+
+    if end_year > 2016:
+      raise ValueError("2016 is the current latest supported end year")
+
     print("Starting microsimulation...")
-    for y in range(startYear, endYear+1):
-      out_file = self.output_dir + "/msim_" + self.region + "_" + self.resolution + "_" + str(y) + ".csv"
+    for year in range(start_year, end_year+1):
+      out_file = self.output_dir + "/msim_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
       print("Generating ", out_file, "... ", sep="", end="", flush=True)
       # TODO check file doesnt exist here? or in the script?
       self.msim = self.__timestep(self.msim)

@@ -1,19 +1,23 @@
-\
-import numpy as np
-import pandas as pd
-#from random import randint
+"""
+Microsimulation base class - common functionality
+"""
 
 import ukcensusapi.Nomisweb as Api
 
 class Base(object):
+  """
+  Microsimulation base class - common functionality
+  """
 
   def __init__(self, region, resolution, cache_dir):
     self.region = region
     self.resolution = resolution
     self.data_api = Api.Nomisweb(cache_dir)
 
-  # this is a copy-paste from static.py, factor into utils or a common base class
   def get_census_data(self):
+    """
+    Download/cache census data
+    """
 
     # convert input string to enum
     resolution = self.data_api.GeoCodeLookup[self.resolution]
@@ -22,11 +26,11 @@ class Base(object):
       region_codes = self.data_api.GeoCodeLookup[self.region]
     else:
       region_codes = self.data_api.get_lad_codes(self.region)
-      if not len(region_codes):
-        raise ValueError("no regions match the input: \"" + self.region + "\"")
+    if not region_codes:
+      raise ValueError("no regions match the input: \"" + self.region + "\"")
 
     area_codes = self.data_api.get_geo_codes(region_codes, resolution)
-     
+
     # Census: sex by age by MSOA
     table = "DC1117EW"
     table_internal = "NM_792_1"
@@ -38,7 +42,7 @@ class Base(object):
                     "geography": area_codes}
 
     # problem - data only available at MSOA and above
-    DC1117EW = self.data_api.get_data(table, table_internal, query_params)
+    dc1117ew = self.data_api.get_data(table, table_internal, query_params)
 
     # Census: sex by ethnicity by MSOA
     table = "DC2101EW"
@@ -51,9 +55,6 @@ class Base(object):
                     "C_SEX": "1,2",
                     "geography": area_codes}
     # problem - data only available at MSOA and above
-    DC2101EW = self.data_api.get_data(table, table_internal, query_params)
+    dc2101ew = self.data_api.get_data(table, table_internal, query_params)
 
-    return (DC1117EW, DC2101EW)
-
-
-  
+    return (dc1117ew, dc2101ew)

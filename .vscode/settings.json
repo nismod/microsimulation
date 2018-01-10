@@ -3,7 +3,7 @@
         "tests"
     ],
     "python.unitTest.pyTestEnabled": true,
-    "python.linting.pylintArgs": ["--indent-string", "\"  \""
+    "python.linting.pylintArgs": ["--indent-string", "\"  \"",
                                   "--max-line-length", "128"],
     "python.pythonPath": "/usr/bin/python3"
  }
