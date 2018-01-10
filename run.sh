@@ -14,10 +14,10 @@ if [ -z "$REGION" ]; then
   exit 1
 fi
 
-#$ -m be
+#$ -m e
 #$ -M a.p.smith@leeds.ac.uk
 #$ -cwd -V
 #$ -l h_vmem=1G
 #$ -pe smp 1 
 ##$ -l node_type=256thread-112G 
-python3 scripts/run_ssm.py $REGION MSOA11 2001 2039
+python3 scripts/run_ssm.py $REGION MSOA11 2001 2039 --fast
