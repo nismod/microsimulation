@@ -41,12 +41,14 @@ class Microsimulation(Common.Base):
     self.mortality = Utils.unlistify(mortality_table, ["Sex", "Age", "Ethnicity"], [n_sex, n_age, n_eth], "Rate")
     print(self.mortality)
 
-    (dc1117ew, dc2101ew) = self.get_census_data()
+    (dc1117ew, dc2101ew, dc6206ew) = self.get_census_data()
+    
+    # TODO NS-SeC ...
 
     self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
     self.eth_map = dc2101ew.C_ETHPUK11.unique()
 
-    msynth = Utils.microsynthesise_seed(dc1117ew, dc2101ew)
+    msynth = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew)
 
     rawtable = hl.flatten(msynth) #, c("OA", "SEX", "AGE", "ETH"))
     # col names and remapped values

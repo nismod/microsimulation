@@ -67,7 +67,7 @@ def adjust_mye_age(mye):
 
   return mye_adj
 
-def microsynthesise_seed(dc1117ew, dc2101ew):
+def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   """
   Microsynthesise a seed population from census data
   """

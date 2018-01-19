@@ -66,7 +66,7 @@ class SequentialMicrosynthesis(Common.Base):
       if not os.path.isfile(out_file):
         print("Generating ", out_file, " [MYE] " if year < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ",
               sep="", end="", flush=True)
-        msynth = self.__microsynthesise(y, oa_prop, eth_prop)
+        msynth = self.__microsynthesise(year, oa_prop, eth_prop)
         print("OK")
         msynth.to_csv(out_file)
       else:
@@ -144,12 +144,16 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __get_census_data(self):
 
-    (dc1117ew, dc2101ew) = self.get_census_data()
+    (dc1117ew, dc2101ew, dc6206ew) = self.get_census_data()
+
+    # add children to adult-only table
+    dc6206ew_adj = self.append_children(dc1117ew, dc6206ew)
 
     self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
     self.eth_map = dc2101ew.C_ETHPUK11.unique()
+    self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
 
-    self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew)
+    self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew_adj)
 
   def __get_mye_data(self):
     """
