@@ -51,10 +51,6 @@ class SequentialMicrosynthesis(Common.Base):
     if end_year > SequentialMicrosynthesis.SNPP_YEAR + 25:
       raise ValueError("2039 is the current latest supported end year")
 
-    # Census 2011 proportions for geography and ethnicity
-    oa_prop = self.cen11.sum((1, 2, 3)) / self.cen11.sum()
-    eth_prop = self.cen11.sum((0, 1, 2)) / self.cen11.sum()
-
     if self.fast_mode:
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
@@ -63,16 +59,24 @@ class SequentialMicrosynthesis(Common.Base):
       out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
       # TODO make them consistent?
-      if not os.path.isfile(out_file):
-        print("Generating ", out_file, " [MYE] " if year < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ",
-              sep="", end="", flush=True)
-        msynth = self.__microsynthesise(year, oa_prop, eth_prop)
-        print("OK")
-        msynth.to_csv(out_file)
-      else:
-        print("Already exists:", out_file)
+      # With dynamic update of seed for now just recompute even if file exists
+      #if not os.path.isfile(out_file):
+      print("Generating ", out_file, " [MYE] " if year < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ",
+            sep="", end="", flush=True)
+      msynth = self.__microsynthesise(year)
+      print("OK")
+      msynth.to_csv(out_file)
+      # else:
+      #   print("Already exists:", out_file)
+      #   if year > 2011:
+      #     # TODO load file, pivot and use as seed
+      #     print("Warning: not using latest population as seed")
 
-  def __microsynthesise(self, year, oa_prop, eth_prop): #LAD=self.region
+  def __microsynthesise(self, year): #LAD=self.region
+
+    # Census 2011/seed (whichever is latest) proportions for geography and ethnicity
+    oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
+    eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
     if year < self.SNPP_YEAR:
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region, "OBS_VALUE")
@@ -82,22 +86,29 @@ class SequentialMicrosynthesis(Common.Base):
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
     eth = hl.prob2IntFreq(eth_prop, age_sex.sum())["freq"]
-    # combine the above into a 2d marginal using QIS-I and census 2011 data as the seed
-    oa_eth = hl.qisi(self.cen11.sum((1, 2)).astype(float), [np.array([0]), np.array([1])], [oa, eth])
-    if not (isinstance(oa_eth) is dict and oa_eth["conv"]):
+    # combine the above into a 2d marginal using QIS-I and census 2011 or later data as the seed
+    oa_eth = hl.qisi(self.seed.sum((1, 2)), [np.array([0]), np.array([1])], [oa, eth])
+    if not (isinstance(oa_eth, dict) and oa_eth["conv"]):
       raise RuntimeError("oa_eth did not converge")
 
     # now the full seeded microsynthesis
     if self.fast_mode:
-      msynth = hl.ipf(self.cen11.astype(float), [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float),
+      msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float),
                                                                                        age_sex.astype(float)])
     else:
-      msynth = hl.qisi(self.cen11.astype(float), [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
+      msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
     if not msynth["conv"]:
       raise RuntimeError("msynth did not converge")
 
     if self.fast_mode:
+      if year > 2011:
+        print("updating seed to", year, " ", end="")
+        self.seed = msynth["result"]
       msynth["result"] = np.around(msynth["result"]).astype(int)
+    else:
+      if year > 2011:
+        print("updating seed to", year, " ", end="")
+        self.seed = msynth["result"].astype(float)
     rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
 
     # col names and remapped values
@@ -109,6 +120,7 @@ class SequentialMicrosynthesis(Common.Base):
 
     # consistency checks (in fast mode just report discrepancies)
     self.__check(table, age_sex, oa_eth["result"])
+
     return table
 
   def __check(self, table, age_sex, oa_eth):
@@ -134,7 +146,7 @@ class SequentialMicrosynthesis(Common.Base):
       for age in range(0, 86):
         #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
         if len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]) != age_sex[sex, age]:
-          failures.append("Age-gender " + str(age+1) + "/" + str(s+1) + " total mismatch: "
+          failures.append("Age-gender " + str(age+1) + "/" + str(sex+1) + " total mismatch: "
                           + str(len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]))
                           + " vs " + str(age_sex[sex, age]))
 
@@ -154,6 +166,9 @@ class SequentialMicrosynthesis(Common.Base):
     self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
 
     self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew_adj)
+
+    # seed defaults to census 11 data, updates as simulate past 2011
+    self.seed = self.cen11.astype(float)
 
   def __get_mye_data(self):
     """

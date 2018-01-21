@@ -80,7 +80,7 @@ def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   cen11se = unlistify(dc2101ew, ["GEOGRAPHY_CODE", "C_SEX", "C_ETHPUK11"], [n_geog, n_sex, n_eth], "OBS_VALUE")
 
   # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
-  print("Synthesising seed population...", end='')
+  print("Synthesising 2011 seed population...", end='')
   msynth = hl.qis([np.array([0, 1, 2]), np.array([0, 1, 3])], [cen11sa, cen11se])
   assert msynth["conv"]
   print("OK")
