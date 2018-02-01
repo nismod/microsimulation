@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
 
-# run script for static sequential microsynthesis
+""" run script for static sequential microsynthesis """
 
-import sys
 import time
+import argparse
 import microsimulation.static as Static
 
 #assert humanleague.version() > 1
 CACHE_DIR = "./cache"
 OUTPUT_DIR = "./data"
 
-# The microsynthesis makes use of the following tables:
-def main():
+def main(params):
+  """ Run it """
 
-  # # start timing
+  # start timing
   start_time = time.time()
 
-  # TODO will fail if region specified as text 
-  print("Static Microsimulation region:", region)
-  print("Static Microsimulation resolution:", resolution)
+  # TODO will fail if region specified as text
+  print("Static Microsimulation region:", params.region)
+  print("Static Microsimulation resolution:", params.resolution)
 
   # init microsynthesis
   try:
-    ssm = Static.SequentialMicrosynthesis(region, resolution, CACHE_DIR, OUTPUT_DIR, fast_mode)
+    ssm = Static.SequentialMicrosynthesis(params.region, params.resolution, CACHE_DIR, OUTPUT_DIR, params.fast)
   except Exception as e:
     print(e)
     return
 
   # generate the population
   try:
-    ssm.run(startYear, endYear)
+    ssm.run(params.start_year, params.end_year)
   except Exception as e:
     print("ERROR:", e)
     return
@@ -37,13 +37,15 @@ def main():
   print("Done. Exec time(s): ", time.time() - start_time)
 
 if __name__ == "__main__":
-  if len(sys.argv) != 5 and len(sys.argv) != 6:
-    print("usage:", sys.argv[0], "<region> <resolution> <startYear> <endYear> [--fast]")
-    print("e.g:", sys.argv[0], "E09000001 MSOA11 2001 2039")
-  else:
-    region = sys.argv[1]
-    resolution = sys.argv[2]
-    startYear = int(sys.argv[3])
-    endYear = int(sys.argv[4])
-    fast_mode = True if len(sys.argv) == 6 and sys.argv[5] == "--fast" else False
-    main()
+
+  parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
+
+  parser.add_argument("region", type=str, help="the ONS code of the local authority district (LAD) to be covered by the microsynthesis, e.g. E09000001")
+  parser.add_argument("resolution", type=str, help="the geographical resolution of the microsynthesis (e.g. OA11, LSOA11, MSOA11)")
+  parser.add_argument("start_year", type=int, help="the start year for the microsimulation (min 2001)")
+  parser.add_argument("end_year", type=int, help="the end year for the microsimulation (max 2039)")
+  parser.add_argument("-f", "--fast", action='store_const', const=True, default=False, help="use imprecise (but fast) generation")
+
+  args = parser.parse_args()
+
+  main(args)
