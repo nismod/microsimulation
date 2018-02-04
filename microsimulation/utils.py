@@ -85,3 +85,18 @@ def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   assert msynth["conv"]
   print("OK")
   return msynth["result"]
+
+
+def year_sequence(start_year, end_year):
+  """ 
+  returns a sequence from start_year to end_year inclusive 
+  year_sequence(2001,2005) = [2001, 2002, 2003, 2004, 2005]
+  year_sequence(2005,2001) = [2005, 2004, 2003, 2002, 2001]
+  """
+  if start_year == end_year:
+    return [start_year]
+
+  if start_year < end_year:
+    return list(range(start_year, end_year + 1))
+  else:
+    return list(range(start_year, end_year - 1, -1))

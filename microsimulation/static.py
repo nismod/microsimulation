@@ -34,28 +34,33 @@ class SequentialMicrosynthesis(Common.Base):
     # load the subnational population projections
     self.__get_snpp_data()
 
+    # TODO enable 2001 ref year
     # (down)load the census 2011 tables
     self.__get_census_data()
 
-  def run(self, start_year, end_year):
+  def run(self, ref_year, target_year):
     """
     Run the sequence
     """
 
-    if start_year > end_year:
-      raise ValueError("end year must be greater than or equal to start year")
+    # TODO enable 2001 ref year
+    # if ref_year != 2001 or ref_year != 2011:
+    #   raise ValueError("(census) reference year must be either 2001 or 2011")
 
-    if start_year < 2001:
-      raise ValueError("2001 is the earliest supported start year")
+    if ref_year != 2011:
+      raise ValueError("(census) reference year must be 2011")
 
-    if end_year > SequentialMicrosynthesis.SNPP_YEAR + 25:
-      raise ValueError("2039 is the current latest supported end year")
+    if target_year < 2001:
+      raise ValueError("2001 is the earliest supported target year")
+
+    if target_year > SequentialMicrosynthesis.SNPP_YEAR + 25:
+      raise ValueError(str(SequentialMicrosynthesis.SNPP_YEAR + 25) + " is the current latest supported end year")
 
     if self.fast_mode:
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
     print("Starting microsynthesis sequence...")
-    for year in range(start_year, end_year+1):
+    for year in Utils.year_sequence(ref_year, target_year):
       out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
       # TODO make them consistent?
@@ -74,7 +79,7 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __microsynthesise(self, year): #LAD=self.region
 
-    # Census 2011/seed (whichever is latest) proportions for geography and ethnicity
+    # Census/seed proportions for geography and ethnicity
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
@@ -101,14 +106,12 @@ class SequentialMicrosynthesis(Common.Base):
       raise RuntimeError("msynth did not converge")
 
     if self.fast_mode:
-      if year > 2011:
-        print("updating seed to", year, " ", end="")
-        self.seed = msynth["result"]
+      print("updating seed to", year, " ", end="")
+      self.seed = msynth["result"]
       msynth["result"] = np.around(msynth["result"]).astype(int)
     else:
-      if year > 2011:
-        print("updating seed to", year, " ", end="")
-        self.seed = msynth["result"].astype(float)
+      print("updating seed to", year, " ", end="")
+      self.seed = msynth["result"].astype(float)
     rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
 
     # col names and remapped values
