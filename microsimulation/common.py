@@ -35,7 +35,6 @@ class Base(object):
 
     # Census: sex by age by MSOA
     table = "DC1117EW"
-    table_internal = "NM_792_1"
     query_params = {"MEASURES": "20100",
                     "date": "latest",
                     "C_AGE": "1...86",
@@ -44,11 +43,10 @@ class Base(object):
                     "geography": area_codes}
 
     # problem - data only available at MSOA and above
-    dc1117ew = self.data_api.get_data(table, table_internal, query_params)
+    dc1117ew = self.data_api.get_data(table, query_params)
 
     # Census: sex by ethnicity by MSOA
     table = "DC2101EW"
-    table_internal = "NM_651_1"
     query_params = {"MEASURES": "20100",
                     "date": "latest",
                     "C_AGE": "0",
@@ -57,11 +55,10 @@ class Base(object):
                     "C_SEX": "1,2",
                     "geography": area_codes}
     # problem - data only available at MSOA and above
-    dc2101ew = self.data_api.get_data(table, table_internal, query_params)
+    dc2101ew = self.data_api.get_data(table, query_params)
 
     # This table contains only 16+ persons (under-16s do not have NS-SeC)
     table = "DC6206EW" 
-    table_internal = "NM_682_1"
     query_params = {"date": "latest",
                     "MEASURES": "20100",
                     "C_SEX": "1,2",
@@ -70,7 +67,7 @@ class Base(object):
                     "C_AGE": "1,2,3,4",
                     "select": "GEOGRAPHY_CODE,C_SEX,C_ETHPUK11,C_NSSEC,C_AGE,OBS_VALUE",
                     "geography": area_codes}
-    dc6206ew = self.data_api.get_data(table, table_internal, query_params)
+    dc6206ew = self.data_api.get_data(table, query_params)
 
     return (dc1117ew, dc2101ew, dc6206ew)
 

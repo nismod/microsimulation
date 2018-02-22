@@ -48,6 +48,7 @@ class Microsimulation(Common.Base):
     self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
     self.eth_map = dc2101ew.C_ETHPUK11.unique()
 
+    # TODO seeded from microdata
     msynth = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew)
 
     rawtable = hl.flatten(msynth) #, c("OA", "SEX", "AGE", "ETH"))

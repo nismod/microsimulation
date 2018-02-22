@@ -168,6 +168,7 @@ class SequentialMicrosynthesis(Common.Base):
     self.eth_map = dc2101ew.C_ETHPUK11.unique()
     self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
 
+    # TODO seed with microdata
     self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew_adj)
 
     # seed defaults to census 11 data, updates as simulate past 2011
@@ -178,8 +179,7 @@ class SequentialMicrosynthesis(Common.Base):
     Gets Mid-year population estimate data for 2001-2016
     Single year of age by gender by geography, at Local Authority scale
     """
-
-    table_internal = "NM_2002_1"
+    table_internal = "NM_2002_1" # 2016-based MYE
     query_params = {
       "gender": "1,2",
       "age": "101...191",
@@ -192,37 +192,37 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye = {}
 
     query_params["date"] = "latestMINUS15"
-    self.mye[2001] = Utils.adjust_mye_age(self.data_api.get_data("MYE01EW", table_internal, query_params))
+    self.mye[2001] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS14"
-    self.mye[2002] = Utils.adjust_mye_age(self.data_api.get_data("MYE02EW", table_internal, query_params))
+    self.mye[2002] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS13"
-    self.mye[2003] = Utils.adjust_mye_age(self.data_api.get_data("MYE03EW", table_internal, query_params))
+    self.mye[2003] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS12"
-    self.mye[2004] = Utils.adjust_mye_age(self.data_api.get_data("MYE04EW", table_internal, query_params))
+    self.mye[2004] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS11"
-    self.mye[2005] = Utils.adjust_mye_age(self.data_api.get_data("MYE05EW", table_internal, query_params))
+    self.mye[2005] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS10"
-    self.mye[2006] = Utils.adjust_mye_age(self.data_api.get_data("MYE06EW", table_internal, query_params))
+    self.mye[2006] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS9"
-    self.mye[2007] = Utils.adjust_mye_age(self.data_api.get_data("MYE07EW", table_internal, query_params))
+    self.mye[2007] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS8"
-    self.mye[2008] = Utils.adjust_mye_age(self.data_api.get_data("MYE08EW", table_internal, query_params))
+    self.mye[2008] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS7"
-    self.mye[2009] = Utils.adjust_mye_age(self.data_api.get_data("MYE09EW", table_internal, query_params))
+    self.mye[2009] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS6"
-    self.mye[2010] = Utils.adjust_mye_age(self.data_api.get_data("MYE10EW", table_internal, query_params))
+    self.mye[2010] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS5"
-    self.mye[2011] = Utils.adjust_mye_age(self.data_api.get_data("MYE11EW", table_internal, query_params))
+    self.mye[2011] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS4"
-    self.mye[2012] = Utils.adjust_mye_age(self.data_api.get_data("MYE12EW", table_internal, query_params))
+    self.mye[2012] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS3"
-    self.mye[2013] = Utils.adjust_mye_age(self.data_api.get_data("MYE13EW", table_internal, query_params))
+    self.mye[2013] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS2"
-    self.mye[2014] = Utils.adjust_mye_age(self.data_api.get_data("MYE14EW", table_internal, query_params))
+    self.mye[2014] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latestMINUS1"
-    self.mye[2015] = Utils.adjust_mye_age(self.data_api.get_data("MYE15EW", table_internal, query_params))
+    self.mye[2015] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latest"
-    self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data("MYE16EW", table_internal, query_params))
+    self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
 
   def __get_snpp_data(self):
     """
@@ -230,4 +230,5 @@ class SequentialMicrosynthesis(Common.Base):
     Download from: https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2014based/snppz1population.zip
     See the R script scripts/preprocess_snpp.R
     """
+    # TODO download from nomisweb? (NM_2006_1 - 2014-based SNPPs)
     self.snpp = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv")
