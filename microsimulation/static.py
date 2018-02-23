@@ -69,7 +69,7 @@ class SequentialMicrosynthesis(Common.Base):
             sep="", end="", flush=True)
       msynth = self.__microsynthesise(year)
       print("OK")
-      msynth.to_csv(out_file)
+      msynth.to_csv(out_file, index_label="PID")
       # else:
       #   print("Already exists:", out_file)
       #   if year > 2011:
@@ -97,8 +97,7 @@ class SequentialMicrosynthesis(Common.Base):
 
     # now the full seeded microsynthesis
     if self.fast_mode:
-      msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float),
-                                                                                       age_sex.astype(float)])
+      msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
     else:
       msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
     if not msynth["conv"]:
@@ -232,4 +231,4 @@ class SequentialMicrosynthesis(Common.Base):
     See the R script scripts/preprocess_snpp.R
     """
     # TODO download from nomisweb? (NM_2006_1 - 2014-based SNPPs)
-    self.snpp = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv")
+    self.snpp = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv") #TODO?, index_col="GEOGRAPHY_CODE")

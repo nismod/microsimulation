@@ -1,13 +1,11 @@
 """
 Microsimulation by a sequence of microsynthesised populations
 """
-import numpy as np
 import pandas as pd
 #from random import randint
 
-import humanleague as hl
+#import humanleague as hl
 import microsimulation.utils as Utils
-import microsimulation.common as Common
 
 class SequentialMicrosynthesisH:
   """
@@ -32,24 +30,23 @@ class SequentialMicrosynthesisH:
     # load the subnational household projections
     self.__get_snhp_data()
 
+    # load the output from the microsynthesis (census 2011 based)
+    self.base_population = self.__get_base_populationdata()
 
   def run(self, base_year, target_year):
     """
     Run the sequence
     """
-    # (down)load the census 2011 tables
-    self.__get_base_populationdata()
-
     census_occ = len(self.base_population[self.base_population.LC4402_C_TYPACCOM > 0])
     census_all = len(self.base_population)
-    print("Base population: ", census_all) 
+    print("Base population (all):", census_all)
+    print("Base population (occ):", census_occ)
+    print("DCLG estimate (occ):", self.snhp.loc[self.region, str(base_year)], "(", self.snhp.loc[self.region, str(base_year)] / census_occ - 1, ")")
 
     # occupancy factor - proportion of dwellings that are occupied by housholds
     # assume this proportion stays roughly constant over the simulation period
     occupancy_factor = census_occ / census_all
     print("Occupancy factor: ", occupancy_factor) 
-
-    print(self.snhp.loc[self.region, str(base_year)] / census_occ)
 
     if target_year < base_year:
       raise ValueError("2001 is the earliest supported target year")
@@ -75,7 +72,7 @@ class SequentialMicrosynthesisH:
       # note we sample the census population, it is not updated to the previous year's sample
       sample = self.base_population.sample(n=pop, replace=True)
       # drop the old index column (which is no longer the index)
-      sample = sample.reset_index().drop(columns=['HID','index'])
+      sample = sample.reset_index().drop(columns=['HID']) # ,'index'
       self.__check(sample)
       #msynth = self.__microsynthesise(year)
       print("OK")
@@ -108,8 +105,7 @@ class SequentialMicrosynthesisH:
     """
     Loads preprocessed raw subnational household projection data (currently 2014-based)
     """
-    self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv")
-    self.snhp = self.snhp.set_index("AreaCode")
+    self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
     #print(self.snhp.head())
 
   def __get_base_populationdata(self):
@@ -118,7 +114,7 @@ class SequentialMicrosynthesisH:
     Assumes csv file in upstream_dir, prefixed by "hh_" 
     """
     filename = self.upstream_dir + "/hh_" + self.region + "_" + self.resolution + ".csv"
-    self.base_population=pd.read_csv(filename)
+    data=pd.read_csv(filename, index_col="HID")
     print("Loaded base population from " + filename)
     #print(self.base_population.head())
-
+    return data
