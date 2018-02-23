@@ -1,7 +1,6 @@
 """
 Microsimulation by a sequence of microsynthesised populations
 """
-import os.path
 import numpy as np
 import pandas as pd
 #from random import randint
@@ -162,11 +161,13 @@ class SequentialMicrosynthesis(Common.Base):
     (dc1117ew, dc2101ew, dc6206ew) = self.get_census_data()
 
     # add children to adult-only table
-    dc6206ew_adj = self.append_children(dc1117ew, dc6206ew)
+    #dc6206ew_adj = self.append_children(dc1117ew, dc6206ew)
+    # For now we drop NS-SEC (not clear if needed)
+    dc6206ew_adj = None
 
     self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
     self.eth_map = dc2101ew.C_ETHPUK11.unique()
-    self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
+    #self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
 
     # TODO seed with microdata
     self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew_adj)

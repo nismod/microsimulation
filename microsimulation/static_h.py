@@ -1,7 +1,6 @@
 """
 Microsimulation by a sequence of microsynthesised populations
 """
-import os.path
 import numpy as np
 import pandas as pd
 #from random import randint
@@ -63,14 +62,11 @@ class SequentialMicrosynthesisH:
 
     print("Starting microsynthesis sequence...")
 
-    #population = self.base_population.copy()
-
     for year in Utils.year_sequence(base_year, target_year):
       out_file = self.output_dir + "/ssm_hh_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
       # TODO make them consistent?
       # With dynamic update of seed for now just recompute even if file exists
-      #if not os.path.isfile(out_file):
       print("Generating ", out_file, " [SNHP]", "... ",
             sep="", end="", flush=True)
       pop = int(self.snhp.loc[self.region, str(year)] / occupancy_factor)
@@ -78,90 +74,31 @@ class SequentialMicrosynthesisH:
       # crude sampling for now (perhaps quasirandom sampling within humanleague)
       # note we sample the census population, it is not updated to the previous year's sample
       sample = self.base_population.sample(n=pop, replace=True)
+      # drop the old index column (which is no longer the index)
+      sample = sample.reset_index().drop(columns=['HID','index'])
+      self.__check(sample)
       #msynth = self.__microsynthesise(year)
       print("OK")
-      sample.to_csv(out_file)
-      # else:
-      #   print("Already exists:", out_file)
-      #   if year > 2011:
-      #     # TODO load file, pivot and use as seed
-      #     print("Warning: not using latest population as seed")
+      sample.to_csv(out_file, index_label="HID")
 
-  def __microsynthesise(self, year): #LAD=self.region
-
-    # Census/seed proportions for geography and ethnicity
-    oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
-    eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
-
-    if year < self.SNPP_YEAR:
-      age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region, "OBS_VALUE")
-    else:
-      age_sex = Utils.create_age_sex_marginal(self.snpp, self.region, "X"+str(year))
-
-    # convert proportions/probabilities to integer frequencies
-    oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
-    eth = hl.prob2IntFreq(eth_prop, age_sex.sum())["freq"]
-    # combine the above into a 2d marginal using QIS-I and census 2011 or later data as the seed
-    oa_eth = hl.qisi(self.seed.sum((1, 2)), [np.array([0]), np.array([1])], [oa, eth])
-    if not (isinstance(oa_eth, dict) and oa_eth["conv"]):
-      raise RuntimeError("oa_eth did not converge")
-
-    # now the full seeded microsynthesis
-    if self.fast_mode:
-      msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float),
-                                                                                       age_sex.astype(float)])
-    else:
-      msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
-    if not msynth["conv"]:
-      raise RuntimeError("msynth did not converge")
-
-    if self.fast_mode:
-      print("updating seed to", year, " ", end="")
-      self.seed = msynth["result"]
-      msynth["result"] = np.around(msynth["result"]).astype(int)
-    else:
-      print("updating seed to", year, " ", end="")
-      self.seed = msynth["result"].astype(float)
-    rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
-
-    # col names and remapped values
-    table = pd.DataFrame(columns=["Area", "DC1117EW_C_SEX", "DC1117EW_C_AGE", "DC2101EW_C_ETHPUK11"])
-    table.Area = Utils.remap(rawtable[0], self.geog_map)
-    table.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1, 2])
-    table.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1, 87))
-    table.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
-
-    # consistency checks (in fast mode just report discrepancies)
-    self.__check(table, age_sex, oa_eth["result"])
-
-    return table
-
-  def __check(self, table, age_sex, oa_eth):
+  def __check(self, sample):
 
     failures = []
 
-    # check area totals
-    areas = oa_eth.sum(1)
-    for i in range(0, len(areas)):
-      if len(table[table.Area == self.geog_map[i]]) != areas[i]:
-        failures.append("Area " + self.geog_map[i] + " total mismatch: "
-                        + str(len(table[table.Area == self.geog_map[i]])) + " vs " + str(areas[i]))
+    # # check area totals
+    # areas = self.base_population.Area.unique()
+    # for a in areas:
+    #   print(a, len(self.base_population[self.base_population.Area == a]), len(sample[sample.Area == a]))
 
-    # check ethnicity totals
-    eths = oa_eth.sum(0)
-    for i in range(0, len(eths)):
-      if len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) != eths[i]:
-        failures.append("Ethnicity " + str(self.eth_map[i]) + " total mismatch: "
-                        + str(len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]])) + " vs " + str(eths[i]))
+    # # check type totals
+    # categories = self.base_population.LC4402_C_TYPACCOM.unique()
+    # for cat in categories:
+    #   print(cat, len(self.base_population[self.base_population.LC4402_C_TYPACCOM == cat]), len(sample[sample.LC4402_C_TYPACCOM == cat]))
 
-    # check gender and age totals
-    for sex in [0, 1]:
-      for age in range(0, 86):
-        #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
-        if len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]) != age_sex[sex, age]:
-          failures.append("Age-gender " + str(age+1) + "/" + str(sex+1) + " total mismatch: "
-                          + str(len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]))
-                          + " vs " + str(age_sex[sex, age]))
+    # # check tenure totals
+    # categories = self.base_population.LC4402_C_TENHUK11.unique()
+    # for cat in categories:
+    #   print(cat, len(self.base_population[self.base_population.LC4402_C_TENHUK11 == cat]), len(sample[sample.LC4402_C_TENHUK11 == cat]))
 
     if failures and not self.fast_mode:
       print("\n".join(failures))
@@ -171,7 +108,7 @@ class SequentialMicrosynthesisH:
     """
     Loads preprocessed raw subnational household projection data (currently 2014-based)
     """
-    self.snhp = pd.read_csv(self.input_dir + "snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv")
+    self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv")
     self.snhp = self.snhp.set_index("AreaCode")
     #print(self.snhp.head())
 
@@ -180,7 +117,7 @@ class SequentialMicrosynthesisH:
     Loads the microsynthesised household base population
     Assumes csv file in upstream_dir, prefixed by "hh_" 
     """
-    filename = self.upstream_dir + "hh_" + self.region + "_" + self.resolution + ".csv"
+    filename = self.upstream_dir + "/hh_" + self.region + "_" + self.resolution + ".csv"
     self.base_population=pd.read_csv(filename)
     print("Loaded base population from " + filename)
     #print(self.base_population.head())
