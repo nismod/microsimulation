@@ -42,10 +42,15 @@ class SequentialMicrosynthesisH:
     self.__get_base_populationdata()
 
     census_occ = len(self.base_population[self.base_population.LC4402_C_TYPACCOM > 0])
-    census_empty = len(self.base_population[self.base_population.LC4402_C_TYPACCOM < 1])
+    census_all = len(self.base_population)
+    print("Base population: ", census_all) 
+
+    # occupancy factor - proportion of dwellings that are occupied by housholds
+    # assume this proportion stays roughly constant over the simulation period
+    occupancy_factor = census_occ / census_all
+    print("Occupancy factor: ", occupancy_factor) 
+
     print(self.snhp.loc[self.region, str(base_year)] / census_occ)
-
-
 
     if target_year < base_year:
       raise ValueError("2001 is the earliest supported target year")
@@ -56,23 +61,31 @@ class SequentialMicrosynthesisH:
     if self.fast_mode:
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
-    # print("Starting microsynthesis sequence...")
-    # for year in Utils.year_sequence(base_year, target_year):
-    #   out_file = self.output_dir + "/ssm_hh_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
-    #   # this is inconsistent with the household microsynth (batch script checks whether output exists)
-    #   # TODO make them consistent?
-    #   # With dynamic update of seed for now just recompute even if file exists
-    #   #if not os.path.isfile(out_file):
-    #   print("Generating ", out_file, " [SNHP]", "... ",
-    #         sep="", end="", flush=True)
-    #   #msynth = self.__microsynthesise(year)
-    #   print("OK")
-    #   #msynth.to_csv(out_file)
-    #   # else:
-    #   #   print("Already exists:", out_file)
-    #   #   if year > 2011:
-    #   #     # TODO load file, pivot and use as seed
-    #   #     print("Warning: not using latest population as seed")
+    print("Starting microsynthesis sequence...")
+
+    #population = self.base_population.copy()
+
+    for year in Utils.year_sequence(base_year, target_year):
+      out_file = self.output_dir + "/ssm_hh_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
+      # this is inconsistent with the household microsynth (batch script checks whether output exists)
+      # TODO make them consistent?
+      # With dynamic update of seed for now just recompute even if file exists
+      #if not os.path.isfile(out_file):
+      print("Generating ", out_file, " [SNHP]", "... ",
+            sep="", end="", flush=True)
+      pop = int(self.snhp.loc[self.region, str(year)] / occupancy_factor)
+
+      # crude sampling for now (perhaps quasirandom sampling within humanleague)
+      # note we sample the census population, it is not updated to the previous year's sample
+      sample = self.base_population.sample(n=pop, replace=True)
+      #msynth = self.__microsynthesise(year)
+      print("OK")
+      sample.to_csv(out_file)
+      # else:
+      #   print("Already exists:", out_file)
+      #   if year > 2011:
+      #     # TODO load file, pivot and use as seed
+      #     print("Warning: not using latest population as seed")
 
   def __microsynthesise(self, year): #LAD=self.region
 

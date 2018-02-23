@@ -27,7 +27,7 @@ class Test(TestCase):
     microsim = StaticH.SequentialMicrosynthesisH(region, resolution, upstream_dir, input_dir, downstream_dir)
     microsim.run(2011, 2039)
 
-    self.assertTrue(False)
+    #self.assertTrue(False)
 
   # City of London MSOA (one geog area)
   def test_dynamic(self):
