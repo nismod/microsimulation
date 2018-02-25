@@ -48,6 +48,12 @@ class SequentialMicrosynthesisH:
     occupancy_factor = census_occ / census_all
     print("Occupancy factor: ", occupancy_factor) 
 
+    # we sample 1-dissolution_rate WITH REPLACEMENT to preserve this proportion of the population
+    # then sample the remainder without replacement to represent newly formed households
+    dissolution_rate = 0.01
+    print("Dissolution rate: ", dissolution_rate) 
+    
+
     if target_year < base_year:
       raise ValueError("2001 is the earliest supported target year")
 
@@ -59,6 +65,8 @@ class SequentialMicrosynthesisH:
 
     print("Starting microsynthesis sequence...")
 
+    population = self.base_population.copy()
+
     for year in Utils.year_sequence(base_year, target_year):
       out_file = self.output_dir + "/ssm_hh_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
@@ -68,11 +76,14 @@ class SequentialMicrosynthesisH:
             sep="", end="", flush=True)
       pop = int(self.snhp.loc[self.region, str(year)] / occupancy_factor)
 
-      # crude sampling for now (perhaps quasirandom sampling within humanleague)
-      # note we sample the census population, it is not updated to the previous year's sample
-      sample = self.base_population.sample(n=pop, replace=True)
+      # 1-dissolution_rate applied to existing population
+      persisting = int(len(population) * (1.0 - dissolution_rate))
+      sample = population.sample(n=persisting, replace=False)
+      newlyformed = population.sample(n=pop-persisting, replace=False)
+      sample = sample.append(newlyformed, ignore_index=True)
+      # append with ignore_index means steps below not necessary
       # drop the old index column (which is no longer the index)
-      sample = sample.reset_index().drop(columns=['HID']) # ,'index'
+      #sample = sample.reset_index().drop(columns=['HID']) # ,'index'
       self.__check(sample)
       #msynth = self.__microsynthesise(year)
       print("OK")
