@@ -7,7 +7,7 @@ if [ ! -f ./apikey.sh ]; then
 fi
 . ./apikey.sh
 
-source activate testenv1
+source activate default
 
 # batch submission
 
