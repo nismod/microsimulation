@@ -82,10 +82,11 @@ class SequentialMicrosynthesis(Common.Base):
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
+    # TODO perhaps just pass the year...
     if year < self.SNPP_YEAR:
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region, "OBS_VALUE")
     else:
-      age_sex = Utils.create_age_sex_marginal(self.snpp, self.region, "X"+str(year))
+      age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region, "OBS_VALUE")
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
@@ -225,11 +226,24 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
 
   def __get_snpp_data(self):
-    # TODO get data from nomisweb - see NM_2006 download in UrbCap
     """
     Loads preprocessed raw subnational population projection data (currently 2014-based)
     Download from: https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2014based/snppz1population.zip
     See the R script scripts/preprocess_snpp.R
     """
-    # TODO download from nomisweb? (NM_2006_1 - 2014-based SNPPs)
-    self.snpp = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv") #TODO?, index_col="GEOGRAPHY_CODE")
+    #self.snpp_old = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv") #TODO?, index_col="GEOGRAPHY_CODE")
+
+    # TODO resolve geog - wales?
+    table_internal = "NM_2006_1" # 2014-based SNPP
+    query_params = {
+      "gender": "1,2",
+      "c_age": "101...191",
+      "MEASURES": "20100",
+      "date": "latest", # 2014-based
+      "projected_year": "2014...2039",
+      "select": "geography_code,projected_year_name,gender,c_age,obs_value",
+      #"geography": "1879048193...1879048573,1879048583,1879048574...1879048582"
+      "geography": "1879048193...1879048518"
+    }
+
+    self.snpp = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
