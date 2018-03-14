@@ -11,7 +11,7 @@ def create_age_sex_marginal(est, lad, value_column):
   """
   # TODO remove gender and age size hard-coding...
   tmp = est[est.GEOGRAPHY_CODE == lad].drop("GEOGRAPHY_CODE", axis=1)
-  marginal = unlistify(tmp, ["GENDER", "AGE"], [2, 86], value_column)
+  marginal = unlistify(tmp, ["GENDER", "C_AGE"], [2, 86], value_column)
   return marginal
 
 # this is a copy-paste from household_microsynth
@@ -47,15 +47,15 @@ def adjust_mye_age(mye):
   pop_m = mye[mye.GENDER == 1].OBS_VALUE.sum()
   pop_a = mye[mye.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
 
-  mye.AGE -= 100
+  mye.C_AGE -= 100
 
-  mye_adj = mye[mye.AGE < 86].copy()
-  mye_over85 = mye[mye.AGE > 85].copy()
+  mye_adj = mye[mye.C_AGE < 86].copy()
+  mye_over85 = mye[mye.C_AGE > 85].copy()
 
   #print(myeOver85.head(12))
 
   agg85 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER"], values="OBS_VALUE", aggfunc=sum)
-  agg85["AGE"] = 86
+  agg85["C_AGE"] = 86
   agg85 = agg85.reset_index()
 
   mye_adj = mye_adj.append(agg85)

@@ -182,9 +182,9 @@ class SequentialMicrosynthesis(Common.Base):
     table_internal = "NM_2002_1" # 2016-based MYE
     query_params = {
       "gender": "1,2",
-      "age": "101...191",
+      "c_age": "101...191",
       "MEASURES": "20100",
-      "select": "geography_code,gender,age,obs_value",
+      "select": "geography_code,gender,c_age,obs_value",
       "geography": "1879048193...1879048573,1879048583,1879048574...1879048582"
     }
 
@@ -225,6 +225,7 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
 
   def __get_snpp_data(self):
+    # TODO get data from nomisweb - see NM_2006 download in UrbCap
     """
     Loads preprocessed raw subnational population projection data (currently 2014-based)
     Download from: https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2014based/snppz1population.zip
