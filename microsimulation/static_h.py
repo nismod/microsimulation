@@ -124,7 +124,7 @@ class SequentialMicrosynthesisH:
     Loads the microsynthesised household base population
     Assumes csv file in upstream_dir, prefixed by "hh_" 
     """
-    filename = self.upstream_dir + "/hh_" + self.region + "_" + self.resolution + ".csv"
+    filename = self.upstream_dir + "/hh_" + self.region + "_" + self.resolution + "_2011.csv"
     data=pd.read_csv(filename, index_col="HID")
     print("Loaded base population from " + filename)
     #print(self.base_population.head())

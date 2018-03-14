@@ -5,7 +5,7 @@ import microsimulation.common as Common
 import microsimulation.static as Static
 import microsimulation.static_h as StaticH
 import microsimulation.dynamic as Dynamic
-#import microsimulation.utils as Utils
+import microsimulation.assignment as Assignment
 
 class Test(TestCase):
 
@@ -36,5 +36,15 @@ class Test(TestCase):
     cache = "./cache"
     microsim = Dynamic.Microsimulation(region, resolution, cache)
     microsim.run(2011, 2012)
+    #self.assertTrue(False)
+
+  # City of London assignment 
+  def test_z_assign(self):
+    region = "E09000001"
+    year = 2011
+    h_data = "../household_microsynth/data"
+    p_data = "./data"
+    assign = Assignment.Assignment(region, year, h_data, p_data)
+    assign.run()
     #self.assertTrue(False)
 

@@ -41,8 +41,6 @@ class Assignment:
 
     self.p_data["HID"] = pd.Series(-1, self.p_data.index)
 
-
-
     msoas = self.p_data.Area.unique()
     print(msoas)
 
@@ -50,11 +48,12 @@ class Assignment:
       oas = self.geog_lookup[self.geog_lookup.msoa==msoa].oa.values
 
       print(oas)
+      self.h_data[self.h_data.Area.isin(oas)]
 
       # do not want a copy!
-      hrps = self.p_data[(self.p_data.Area==msoa) & (self.p_data.DC1117EW_C_AGE > 16)]
+      hrps = self.p_data.loc[(self.p_data.Area==msoa) & (self.p_data.DC1117EW_C_AGE > 16)]
 
-      print(hrps.head())
+#      print(hrps.head())
 
     # for (msoa in msoas) {
     #   oas = lookup[lookup$msoa==msoa,]$oa
@@ -76,4 +75,4 @@ class Assignment:
     #   #h1 = sample(h[Area %in% oas], nh
     # }
 
-    print(self.p_data.head())
+ #   print(self.p_data.head())
