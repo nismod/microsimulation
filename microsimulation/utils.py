@@ -5,13 +5,13 @@ utility functions
 import numpy as np
 import humanleague as hl
 
-def create_age_sex_marginal(est, lad, value_column):
+def create_age_sex_marginal(est, lad):
   """
   Generate age-by-sex marginal from estimated (MYE/SNPP) data
   """
   # TODO remove gender and age size hard-coding...
   tmp = est[est.GEOGRAPHY_CODE == lad].drop("GEOGRAPHY_CODE", axis=1)
-  marginal = unlistify(tmp, ["GENDER", "C_AGE"], [2, 86], value_column)
+  marginal = unlistify(tmp, ["GENDER", "C_AGE"], [2, 86], "OBS_VALUE")
   return marginal
 
 # this is a copy-paste from household_microsynth

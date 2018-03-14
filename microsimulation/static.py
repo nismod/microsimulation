@@ -82,11 +82,11 @@ class SequentialMicrosynthesis(Common.Base):
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
-    # TODO perhaps just pass the year...
+    # TODO perhaps just pass the year?...
     if year < self.SNPP_YEAR:
-      age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region, "OBS_VALUE")
+      age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
     else:
-      age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region, "OBS_VALUE")
+      age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
