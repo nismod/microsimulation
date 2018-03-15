@@ -234,16 +234,20 @@ class SequentialMicrosynthesis(Common.Base):
     #self.snpp_old = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv") #TODO?, index_col="GEOGRAPHY_CODE")
 
     # TODO resolve geog - wales?
+
+    # need to do this in 2 batches as entire table has >1000000 rows
     table_internal = "NM_2006_1" # 2014-based SNPP
     query_params = {
       "gender": "1,2",
       "c_age": "101...191",
       "MEASURES": "20100",
       "date": "latest", # 2014-based
-      "projected_year": "2014...2039",
+      "projected_year": "2014...2027",
       "select": "geography_code,projected_year_name,gender,c_age,obs_value",
-      #"geography": "1879048193...1879048573,1879048583,1879048574...1879048582"
-      "geography": "1879048193...1879048518"
+      "geography": "1946157057...1946157382"
     }
+    self.snpp = self.data_api.get_data(table_internal, query_params)
 
-    self.snpp = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
+    query_params["projected_year"] = "2028...2039"
+    self.snpp = self.snpp.append(self.data_api.get_data(table_internal, query_params))
+    self.snpp = Utils.adjust_mye_age(self.snpp)
