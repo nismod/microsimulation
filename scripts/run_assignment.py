@@ -28,11 +28,11 @@ def main(params):
   #  return
 
   # generate the population
-  try:
-    ass.run()
-  except Exception as e:
-    print("ERROR:", e)
-    return
+  #try:
+  ass.run()
+  # except Exception as e:
+  #   print("ERROR:", e)
+  #   return
 
 
 
