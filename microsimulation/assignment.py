@@ -37,6 +37,9 @@ class Assignment:
     # get OA<->MSOA mapping
     self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv")
 
+    # make it deterministic
+    np.random.seed(12345)
+
   def run(self):
     """
     Run the sequence
@@ -61,22 +64,23 @@ class Assignment:
 
       print(msoa + ":", oas)
 
-      # first fill communal establishments
-      self.__fill_communal(msoa, oas)
-
       for eth in eths:
         if eth < 0:
           continue
 
+        print("eth", eth)
+
         # to ensure we dont inadvertently modify a copy rather than the original data just use index
-        h_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.LC4202EW_C_ETHHUK11 == eth)].index
+        h_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
+                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                              & (self.h_data.FILLED == False)].index
 
         if len(h_ref) == 0:
           continue
 
         # sample adults of the appropriate ethnicity for HRP
-        p_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-                              & (self.p_data.DC1117EW_C_AGE > 16) 
+        p_ref = self.p_data.loc[(self.p_data.Area == msoa)
+                              & (self.p_data.DC1117EW_C_AGE > 16)
                               & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                               & (self.p_data.HID == -1)].index
 
@@ -86,7 +90,7 @@ class Assignment:
         # assign persons to houses
         n_hh = len(h_ref)
         if len(p_ref) < n_hh:
-          print("warning: out of (HRP) people")
+          print("warning: out of (HRP) people with matching ethnicity", n_hh, len(p_ref))
           continue
 
         p_sample = np.random.choice(p_ref, n_hh, replace=False)
@@ -102,30 +106,70 @@ class Assignment:
                               & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                               & (self.p_data.HID == -1)].index
 
-        h2_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+        h2_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
                            & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-                           & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,5]))].index
+                           & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3, 5]))
+                           & (self.h_data.FILLED == False)].index
 
         n_hh = len(h2_ref)
         if len(p2_ref) < n_hh:
-          print("warning: out of people")
-          continue
+          print("warning: out of (adult) people with matching ethnicity", n_hh, len(p2_ref))
+          n_hh = len(p2_ref)
+          #continue
         
         p2_sample = np.random.choice(p2_ref, n_hh, replace=False)
 
         # mark 2 person households as filled 
         h2only_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
                            & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-                           & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,5]))
-                           & (self.h_data.LC4404EW_C_SIZHUK11 == 2)].index
-        self.h_data.loc[h2only_ref, "FILLED"] = True
-        self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh]
+                           & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3, 5]))
+                           & (self.h_data.LC4404EW_C_SIZHUK11 == 2)
+                           & (self.h_data.FILLED == False)].index
 
-        # print(len(h_ref))
-        # print(len(p_ref))
-        # print(len(p_sample))
+        self.h_data.loc[h2only_ref, "FILLED"] = True
+        self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
+
+        # Add a child to couple households of size 3 and mark filled
+        self.__sample_child(msoa, oas, eth, 3)
+        # Add a second child to couple households of size 4+
+        self.__sample_child(msoa, oas, eth, 4, mark_filled=False) # 4 means "4 or more"
+
+
+        self.__sample_single_parent_child(msoa, oas, eth, 2)
+        self.__sample_single_parent_child(msoa, oas, eth, 3)
+        self.__sample_single_parent_child(msoa, oas, eth, 4, mark_filled=False) # 4 means "4 or more"
+        
+        # # sample one child for single-parent households
+        # c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
+        #                        & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
+        #                        & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
+        #                        & (self.p_data.HID == -1)].index
+
+        # if len(c1_ref) > 0:
+        #   hsp_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+        #                           & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+        #                           & (self.h_data.LC4408_C_AHTHUK11 == 4)].index
+
+        #   n_hh = len(hsp_ref)
+        #   if len(c1_ref) < n_hh:
+        #     print("warning: out of (1st child) people with matching ethnicity", n_hh, len(c1_ref))
+        #     continue
+
+        #   c1_sample = np.random.choice(c1_ref, n_hh, replace=False)
+        #   # mark single-occupant houses as filled where nocc = 2
+        #   hsp2_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+        #                           & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+        #                           & (self.h_data.LC4408_C_AHTHUK11 == 4)
+        #                           & (self.h_data.LC4404EW_C_SIZHUK11 == 2)].index
+        #   self.h_data.loc[hsp2_ref, "FILLED"] = True
+
+        #   self.p_data.loc[c1_sample, "HID"] = hsp_ref[0:n_hh]
 
         self.__stats()
+
+      # finally fill communal establishments
+      self.__fill_communal(msoa, oas)
+
 
       # LC4408_C_AHTHUK11
       # "1": "One person household",  1 adult, 0 children
@@ -137,12 +181,95 @@ class Assignment:
       self.p_data.to_csv("pass.csv")
       self.h_data.to_csv("hass.csv")
 
-  def __stats(self):
-    print("P:", len(self.p_data[self.p_data.HID > 0]) / len(self.p_data))
-    print("H:", len(self.h_data[self.h_data.FILLED]) / len(self.h_data))
-    print("P rem:", len(self.p_data[self.p_data.HID == -1]))
-    # ignore pylint saying use not/is False - it doesnt work
-    print("H rem:", len(self.h_data[self.h_data.FILLED == False]), "(", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 == -1]), ")")
+      self.check()
+
+  def check(self):
+
+    print("CHECKING...")
+    print("communal residences not filled:", len(self.h_data[(self.h_data.CommunalSize >= 0) 
+                                                           & (self.h_data.FILLED == False)]))
+
+    print("single-occupant households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 1)
+                                                                  & (self.h_data.FILLED == False)]))
+
+    print("couple households with no children not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
+                                                            & (self.h_data.LC4404EW_C_SIZHUK11 == 2) 
+                                                            & (self.h_data.FILLED == False)]))
+
+    print("couple households with one child not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
+                                                                        & (self.h_data.LC4404EW_C_SIZHUK11 == 3) 
+                                                                        & (self.h_data.FILLED == False)]))
+
+
+  def __sample_single_parent_child(self, msoa, oas, eth, nocc, mark_filled=True):
+    # pool of unallocated children of specfic enthnicity
+    c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
+                           & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
+                           & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
+                           & (self.p_data.HID == -1)].index
+
+    # pool of single-parent households of specific ethnicity
+    hsp_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+                            & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                            & (self.h_data.LC4408_C_AHTHUK11 == 4)
+                            & (self.h_data.FILLED == False)].index
+
+    if len(c1_ref) == 0:
+      print("no children found")
+      return
+
+    if len(hsp_ref) > 0:
+
+      n_hh = len(hsp_ref)
+      if len(c1_ref) < n_hh:
+        print("warning: out of (child", nocc-1, ") people with matching ethnicity", n_hh, len(c1_ref))
+        n_hh = len(c1_ref)
+        #return
+
+      c1_sample = np.random.choice(c1_ref, n_hh, replace=False)
+      # mark single-parent houses as filled where nocc reached
+      hsp2_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                              & (self.h_data.LC4408_C_AHTHUK11 == 4)
+                              & (self.h_data.LC4404EW_C_SIZHUK11 == nocc)
+                              & (self.h_data.FILLED == False)].index
+      if mark_filled:
+        self.h_data.loc[hsp2_ref, "FILLED"] = True
+
+      self.p_data.loc[c1_sample, "HID"] = hsp_ref[0:n_hh]
+
+
+  def __sample_child(self, msoa, oas, eth, nocc, mark_filled=True):
+    # sample one child for two-parent households
+    c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
+                            & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
+                            & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
+                            & (self.p_data.HID == -1)].index
+
+    if len(c1_ref) > 0:
+      hc_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                              & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3]))
+                              & (self.h_data.FILLED == False)].index
+
+      n_hh = len(hc_ref)
+      if len(c1_ref) < n_hh:
+        print("warning: out of (child", nocc-2, ") people with matching ethnicity", n_hh, len(c1_ref))
+        n_hh = len(c1_ref)
+        #return
+
+      c1_sample = np.random.choice(c1_ref, n_hh, replace=False)
+      # mark single-occupant houses as filled where nocc = 2
+      hocc_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                              & (self.h_data.LC4408_C_AHTHUK11 == 4)
+                              & (self.h_data.LC4404EW_C_SIZHUK11 == nocc)
+                              & (self.h_data.FILLED == False)].index
+
+      if mark_filled:
+        self.h_data.loc[hocc_ref, "FILLED"] = True
+
+      self.p_data.loc[c1_sample, "HID"] = hc_ref[0:n_hh]
 
 
 # Selected household ethnicities
@@ -210,11 +337,11 @@ class Assignment:
     for index in c_ref:
       ctype = self.h_data.loc[index, "QS420EW_CELL"]
       if ctype < 22:
-        p_ref = self.p_data.loc[(self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 75)].index
+        p_ref = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 75)].index
       elif ctype < 27:
-        p_ref = self.p_data.loc[(self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 18) & (self.p_data.DC1117EW_C_AGE < 26)].index
+        p_ref = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 18) & (self.p_data.DC1117EW_C_AGE < 26)].index
       else:
-        p_ref = self.p_data.loc[(self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 16)].index
+        p_ref = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 16)].index
 
       nocc = int(self.h_data.loc[index, "CommunalSize"])
 
@@ -228,3 +355,11 @@ class Assignment:
         self.p_data.loc[p_sample, "HID"] = index
       # mark the communal residence as filled
       self.h_data.loc[index, "FILLED"] = True
+
+
+  def __stats(self):
+    print("P:", len(self.p_data[self.p_data.HID > 0]) / len(self.p_data))
+    print("H:", len(self.h_data[self.h_data.FILLED]) / len(self.h_data))
+    print("P rem:", len(self.p_data[self.p_data.HID == -1]))
+    # ignore pylint saying use not/is False - it doesnt work
+    print("H rem:", len(self.h_data[self.h_data.FILLED == False]), "(", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 == -1]), ")")
