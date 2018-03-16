@@ -9,8 +9,8 @@ class Assignment:
   Assignment of people (narrow detail at low geog resolution) to households (broad detail at high geog resolution)
   """
 
-  # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
-  SNPP_YEAR = 2014
+  # Treat under 18s as dependent children
+  ADULT_AGE = 18
 
   def __init__(self, region, year, h_data_dir, p_data_dir):
 
@@ -80,7 +80,7 @@ class Assignment:
 
         # sample adults of the appropriate ethnicity for HRP
         p_ref = self.p_data.loc[(self.p_data.Area == msoa)
-                              & (self.p_data.DC1117EW_C_AGE > 16)
+                              & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) # 18 actually means 17, so this IS 18 or over
                               & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                               & (self.p_data.HID == -1)].index
 
@@ -93,16 +93,19 @@ class Assignment:
           print("warning: out of (HRP) people with matching ethnicity", n_hh, len(p_ref))
           continue
 
+        # mark people as assigned
         p_sample = np.random.choice(p_ref, n_hh, replace=False)
+        self.p_data.loc[p_sample, "HID"] = h_ref[0:n_hh]
+        print("assigned", n_hh, "HRPs")
+
         # mark single-occupant houses as filled
         h1_ref = self.h_data[(self.h_data.Area.isin(oas)) & (self.h_data.LC4202EW_C_ETHHUK11 == eth) & (self.h_data.LC4408_C_AHTHUK11 == 1)].index
         self.h_data.loc[h1_ref, "FILLED"] = True
 
-        self.p_data.loc[p_sample, "HID"] = h_ref[0:n_hh]
 
         # resample adults for non-single adult households (might need to/should relax ethnicity)
         p2_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-                              & (self.p_data.DC1117EW_C_AGE > 16) # 16 actually means 15, so this IS 16 or over
+                              & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) # 18 actually means 17, so this IS 18 or over
                               & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                               & (self.p_data.HID == -1)].index
 
@@ -117,7 +120,12 @@ class Assignment:
           n_hh = len(p2_ref)
           #continue
         
+        # mark people as assigned
         p2_sample = np.random.choice(p2_ref, n_hh, replace=False)
+        self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
+        print("assigned", n_hh, "adults")
+
+        #self.p_data.to_csv("./p_int"+str(eth)+".csv")
 
         # mark 2 person households as filled 
         h2only_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
@@ -126,8 +134,8 @@ class Assignment:
                            & (self.h_data.LC4404EW_C_SIZHUK11 == 2)
                            & (self.h_data.FILLED == False)].index
 
+
         self.h_data.loc[h2only_ref, "FILLED"] = True
-        self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
 
         # Add a child to couple households of size 3 and mark filled
         self.__sample_child(msoa, oas, eth, 3)
@@ -139,36 +147,11 @@ class Assignment:
         self.__sample_single_parent_child(msoa, oas, eth, 3)
         self.__sample_single_parent_child(msoa, oas, eth, 4, mark_filled=False) # 4 means "4 or more"
         
-        # # sample one child for single-parent households
-        # c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-        #                        & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
-        #                        & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
-        #                        & (self.p_data.HID == -1)].index
-
-        # if len(c1_ref) > 0:
-        #   hsp_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
-        #                           & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-        #                           & (self.h_data.LC4408_C_AHTHUK11 == 4)].index
-
-        #   n_hh = len(hsp_ref)
-        #   if len(c1_ref) < n_hh:
-        #     print("warning: out of (1st child) people with matching ethnicity", n_hh, len(c1_ref))
-        #     continue
-
-        #   c1_sample = np.random.choice(c1_ref, n_hh, replace=False)
-        #   # mark single-occupant houses as filled where nocc = 2
-        #   hsp2_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
-        #                           & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-        #                           & (self.h_data.LC4408_C_AHTHUK11 == 4)
-        #                           & (self.h_data.LC4404EW_C_SIZHUK11 == 2)].index
-        #   self.h_data.loc[hsp2_ref, "FILLED"] = True
-
-        #   self.p_data.loc[c1_sample, "HID"] = hsp_ref[0:n_hh]
-
-        self.__stats()
+        #self.__stats()
 
       # finally fill communal establishments
       self.__fill_communal(msoa, oas)
+      self.__stats()
 
 
       # LC4408_C_AHTHUK11
@@ -192,19 +175,25 @@ class Assignment:
     print("single-occupant households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 1)
                                                                   & (self.h_data.FILLED == False)]))
 
-    print("couple households with no children not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
-                                                            & (self.h_data.LC4404EW_C_SIZHUK11 == 2) 
-                                                            & (self.h_data.FILLED == False)]))
+    print("single-parent households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 4)
+                                                                & (self.h_data.FILLED == False)]))
 
-    print("couple households with one child not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
+    print("couple households with no children not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
+                                                                          & (self.h_data.LC4404EW_C_SIZHUK11 == 2) 
+                                                                          & (self.h_data.FILLED == False)]))
+
+    print("couple households with one child not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3]))
                                                                         & (self.h_data.LC4404EW_C_SIZHUK11 == 3) 
                                                                         & (self.h_data.FILLED == False)]))
+
+    print("mixed households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
+                                                        & (self.h_data.FILLED == False)]))
 
 
   def __sample_single_parent_child(self, msoa, oas, eth, nocc, mark_filled=True):
     # pool of unallocated children of specfic enthnicity
     c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-                           & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
+                           & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) # 18 actually means 17, so this IS 17 or under
                            & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                            & (self.p_data.HID == -1)].index
 
@@ -222,10 +211,11 @@ class Assignment:
 
       n_hh = len(hsp_ref)
       if len(c1_ref) < n_hh:
-        print("warning: out of (child", nocc-1, ") people with matching ethnicity", n_hh, len(c1_ref))
+        print("warning: out of (child", nocc-1, ") people with matching ethnicity, need", n_hh, "got", len(c1_ref))
         n_hh = len(c1_ref)
         #return
 
+      print("sampled", n_hh, "children")
       c1_sample = np.random.choice(c1_ref, n_hh, replace=False)
       # mark single-parent houses as filled where nocc reached
       hsp2_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
@@ -242,7 +232,7 @@ class Assignment:
   def __sample_child(self, msoa, oas, eth, nocc, mark_filled=True):
     # sample one child for two-parent households
     c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-                            & (self.p_data.DC1117EW_C_AGE < 17) # 17 actually means 16, so this IS 15 or under
+                            & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) # 18 actually means 17, so this IS 17 or under
                             & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                             & (self.p_data.HID == -1)].index
 
@@ -270,6 +260,7 @@ class Assignment:
         self.h_data.loc[hocc_ref, "FILLED"] = True
 
       self.p_data.loc[c1_sample, "HID"] = hc_ref[0:n_hh]
+      print("sampled", n_hh, "children")
 
 
 # Selected household ethnicities
@@ -355,6 +346,8 @@ class Assignment:
         self.p_data.loc[p_sample, "HID"] = index
       # mark the communal residence as filled
       self.h_data.loc[index, "FILLED"] = True
+      print("assigned", len(p_sample), "communal residents")
+
 
 
   def __stats(self):
