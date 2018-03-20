@@ -67,6 +67,17 @@ class Assignment:
       # first fill communal establishments
       self.__fill_communal(msoa, oas)
 
+      # LC4408_C_AHTHUK11
+      # "1": "One person household",                                   1 adult, 0 children
+      # "2": "Married or same-sex civil partnership couple household", 2 adults, >=0 children
+      # "3": "Cohabiting couple household",                            2 adults, >=0 children
+      # "4": "Lone parent household",                                  1 adults, >0 children
+      # "5": "Multi-person household"                                  >2 adults >=0 children
+
+      # sample couples using weights - hetero low age diff same eth bias
+
+      # sample children based on eth(s) of parents
+
       for eth in eths:
         if eth < 0:
           continue
@@ -156,24 +167,16 @@ class Assignment:
 
       self.__stats()
 
-
-      # LC4408_C_AHTHUK11
-      # "1": "One person household",  1 adult, 0 children
-      # "2": "Married or same-sex civil partnership couple household", 2 adults, >=0 children
-      # "3": "Cohabiting couple household",                            2 adults, >=0 children
-      # "4": "Lone parent household", 1 adults, >0 children
-      # "5": "Multi-person household" >2 adults >=0 children
-
       self.p_data.to_csv("pass.csv")
       self.h_data.to_csv("hass.csv")
 
       self.check()
 
   def __sample_single_parent_child(self, msoa, oas, eth, nocc, mark_filled=True):
-    # pool of unallocated children of specfic or mixed enthnicity
+    # pool of unallocated children of specfic or mixed? enthnicity
     c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
                            & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) # 18 actually means 17, so this IS 17 or under
-                           & (self.p_data.DC2101EW_C_ETHPUK11.isin([eth, 5]))
+                           & (self.p_data.DC2101EW_C_ETHPUK11.isin([eth,5]))
                            & (self.p_data.HID == -1)].index
 
     # pool of single-parent households of specific ethnicity
@@ -212,7 +215,7 @@ class Assignment:
     # sample one child for two-parent households
     c1_ref = self.p_data.loc[(self.p_data.Area == msoa) 
                             & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) # 18 actually means 17, so this IS 17 or under
-                            & (self.p_data.DC2101EW_C_ETHPUK11.isin([eth, 5]))
+                            & (self.p_data.DC2101EW_C_ETHPUK11.isin([eth,5]))
                             & (self.p_data.HID == -1)].index
 
     if len(c1_ref) > 0:
@@ -231,7 +234,7 @@ class Assignment:
       # mark single-occupant houses as filled where nocc = 2
       hocc_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
                               & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-                              & (self.h_data.LC4408_C_AHTHUK11 == 4)
+                              & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3]))
                               & (self.h_data.LC4404EW_C_SIZHUK11 == nocc)
                               & (self.h_data.FILLED == False)].index
 
@@ -363,7 +366,8 @@ class Assignment:
   def check(self):
 
     print("CHECKING...")
-    print("filled occupied households", len(self.h_data[self.h_data.FILLED == True]), "of", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 > 0]))
+    print("occupied households not filled", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.FILLED == False)]), 
+      "of", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 > 0]))
     print("communal residences not filled:", len(self.h_data[(self.h_data.CommunalSize >= 0) 
                                                            & (self.h_data.FILLED == False)]))
 
@@ -397,5 +401,8 @@ class Assignment:
     print("mixed households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
                                                         & (self.h_data.FILLED == False)]))
 
-    print("adults not assigned", len(self.p_data[(self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) & (self.p_data.HID == -1)]))
-    print("children not assigned", len(self.p_data[(self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) & (self.p_data.HID == -1)]))
+    print("adults not assigned", len(self.p_data[(self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) & (self.p_data.HID == -1)]),
+      "of", len(self.p_data[self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE]))
+
+    print("children not assigned", len(self.p_data[(self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) & (self.p_data.HID == -1)]),
+      "of", len(self.p_data[self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE]))
