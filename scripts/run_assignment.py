@@ -6,7 +6,8 @@ import time
 import argparse
 import microsimulation.assignment as Assignment
 
-H_DATA_DIR = "../household_microsynth/data"
+#H_DATA_DIR = "../household_microsynth/data"
+H_DATA_DIR = "./data"
 P_DATA__DIR = "./data"
 
 def main(params):
@@ -22,7 +23,7 @@ def main(params):
 
   # init assignment algorithm
   #try:
-  ass = Assignment.Assignment(params.region, params.year, H_DATA_DIR, P_DATA__DIR)
+  ass = Assignment.Assignment(params.region, params.year, params.strict, H_DATA_DIR, P_DATA__DIR)
   #except Exception as e:
   #  print(e)
   #  return
@@ -34,8 +35,6 @@ def main(params):
   #   print("ERROR:", e)
   #   return
 
-
-
   print("Done. Exec time(s): ", time.time() - start_time)
 
 if __name__ == "__main__":
@@ -45,6 +44,7 @@ if __name__ == "__main__":
   parser.add_argument("region", type=str, help="the ONS code of the local authority district (LAD) to be covered by the microsynthesis, e.g. E09000001")
   # currently assuming OA11 resolution for households and MSOA for people
   parser.add_argument("year", type=int, help="the reference (i.e. census) year for the microsimulation (either 2001 or 2011)")
+  parser.add_argument("-s", "--strict", action='store_const', const=True, default=False, help="fail if cannot exactly sample required number of people")
   
   args = parser.parse_args()
 
