@@ -42,9 +42,8 @@ class Test(TestCase):
   def test_z_assign(self):
     region = "E09000001"
     year = 2011
-    h_data = "../household_microsynth/data"
-    p_data = "./data"
-    assign = Assignment.Assignment(region, year, h_data, p_data)
+    data_dir = "./data"
+    assign = Assignment.Assignment(region, year, False, data_dir, data_dir)
     assign.run()
     #self.assertTrue(False)
 
