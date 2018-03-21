@@ -8,7 +8,7 @@
             "stopOnEntry": true,
             "pythonPath": "${config:python.pythonPath}",
             "program": "${file}",
-            "args": ["Newcastle upon Tyne", "MSOA11"],
+            "args": ["E09000001", "2011"],
             "cwd": "${workspaceRoot}",
             "env": {},
             "envFile": "${workspaceRoot}/.env",
