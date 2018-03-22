@@ -6,9 +6,7 @@ import time
 import argparse
 import microsimulation.assignment as Assignment
 
-#H_DATA_DIR = "../household_microsynth/data"
-H_DATA_DIR = "./data"
-P_DATA__DIR = "./data"
+DATA_DIR = "./data"
 
 def main(params):
   """ Run it """
@@ -23,7 +21,7 @@ def main(params):
 
   # init assignment algorithm
   #try:
-  ass = Assignment.Assignment(params.region, params.year, params.strict, H_DATA_DIR, P_DATA__DIR)
+  ass = Assignment.Assignment(params.region, params.year, params.strict, DATA_DIR)
   #except Exception as e:
   #  print(e)
   #  return

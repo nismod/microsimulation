@@ -12,28 +12,32 @@ class Assignment:
   # Treat under 18s as dependent children
   ADULT_AGE = 18
 
-  def __init__(self, region, year, strictmode, h_data_dir, p_data_dir):
+  def __init__(self, region, year, strictmode, data_dir):
 
     #Common.Base.__init__(self, region, resolution, cache_dir)
     self.region = region
     self.year = year
 
     # write pop back to
-    self.output_dir = p_data_dir
+    self.output_dir = data_dir
 
-    h_file = h_data_dir + "/ssm_hh_" + region + "_OA11_" + str(year) + ".csv"
-    p_file = p_data_dir + "/ssm_" + region + "_MSOA11_" + str(year) + ".csv"
+    h_file = data_dir + "/ssm_hh_" + region + "_OA11_" + str(year) + ".csv"
+    p_file = data_dir + "/ssm_" + region + "_MSOA11_" + str(year) + ".csv"
 
     self.h_data = pd.read_csv(h_file, index_col="HID")
 
     self.p_data = pd.read_csv(p_file, index_col="PID")
 
+    # index of household in persons table
     self.p_data["HID"] = pd.Series(-1, self.p_data.index)
-    self.h_data["FILLED"] = pd.Series(False, self.p_data.index)
+    # index of HRP(person) in household table
+    self.h_data["HRPID"] = pd.Series(-1, self.h_data.index)
+    # flag to indicate if household is complete 
+    self.h_data["FILLED"] = pd.Series(False, self.h_data.index)
 
     self.strictmode = strictmode
     if self.strictmode:
-      print("Strict assignment mode - assignment will fail if not enough people in any category of the sample population")
+      print("Strict assignment mode IGNORED - assignment will fail if not enough people in any category of the sample population")
     else:
       print("Relaxed assignment mode - assignment will sample as many people as it can in any category of the sample population")
       
@@ -43,7 +47,9 @@ class Assignment:
     # get OA<->MSOA mapping
     self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv")
 
+    # distributions of various people by age/sex/ethnicity from microdata
     self.hrp_dist = pd.read_csv("./data/hrp_dist.csv")
+    self.partner_hrp_dist = pd.read_csv("./data/partner_hrp_dist.csv")
 
     # make it deterministic
     np.random.seed(12345)
@@ -56,9 +62,10 @@ class Assignment:
     eths = self.h_data.LC4202EW_C_ETHHUK11.unique()
     #eths = [eths[1]]
     #print(eths)
-    # we have different eth resolution in the datasets
+    # we have different eth resolution in the (micro)datasets
     eth_mapping = {-1:-1, 2:2, 3:3, 4:4, 5:4, 7:5, 8:5, 9:5, 10:5, 12:6, 13:6, 14:6, 15:6, 16:6, 18:7, 19:7, 20:7, 22:8, 23:8}
 #    self.p_data.replace({"DC2101EW_C_ETHPUK11": eth_mapping})
+    # TODO rename column to be clear categories are now microdata ones
     self.p_data.DC2101EW_C_ETHPUK11.replace(eth_mapping, inplace=True)
     #print(self.p_data.DC2101EW_C_ETHPUK11.unique())
     #assert len(eths) == len(self.p_data.DC2101EW_C_ETHPUK11.unique())
@@ -73,7 +80,7 @@ class Assignment:
       print(msoa + ":", oas)
 
       # first fill communal establishments
-#      self.__fill_communal(msoa, oas)
+      self.__fill_communal(msoa, oas)
 
       # LC4408_C_AHTHUK11
       # "1": "One person household",                                   1 adult, 0 children
@@ -98,12 +105,7 @@ class Assignment:
         h1_ref = self.h_data[(self.h_data.Area.isin(oas)) & (self.h_data.LC4202EW_C_ETHHUK11 == eth) & (self.h_data.LC4408_C_AHTHUK11 == 1)].index
         self.h_data.loc[h1_ref, "FILLED"] = True
 
-
-        # self.__sample_partner_by_eth(msoa, oas, eth)
-
-        # #self.p_data.to_csv("./p_int"+str(eth)+".csv")
-
-        # # mark 2 person households as filled 
+        # # mark 2 person couple households as filled 
         # h2only_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
         #                    & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
         #                    & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3]))
@@ -129,7 +131,11 @@ class Assignment:
       # self.__fill_multi(msoa, oas, 4, mark_filled=False)
 
       self.__stats()
+      self.__sample_partner(msoa, oas)
+      self.__stats()
 
+      h_file = self.output_dir + "/ass_hh_" + self.region + "_OA11_" + str(self.year) + ".csv"
+      p_file = self.output_dir + "/ass_" + self.region + "_MSOA11_" + str(self.year) + ".csv"
       self.p_data.to_csv("pass.csv")
       self.h_data.to_csv("hass.csv")
 
@@ -169,67 +175,104 @@ class Assignment:
                             & (self.p_data.HID == -1)].index
 
       # get closest fit if no exact
-#      if len(p_ref) == 0:
-#        p_ref = self.get_closest_match(msoa, age,sex, eth)
-      
+      if len(p_ref) == 0:
+        p_ref = self.get_closest_match(msoa, age, sex, eth)
+     
       if len(p_ref) == 0:
         print("not found:", age, sex, eth) #, hrp_eth_dist[sample_idx])
       else: # just take first available person
         self.p_data.loc[p_ref[0], "HID"] = h_ref[h_index]
+        self.h_data.loc[h_ref[h_index], "HRPID"] = p_ref[0]
 
       h_index += 1
 
-    # if len(p_ref) < n_hh:
-    #   if self.strictmode:
-    #     raise RuntimeError("error: out of (HRP) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p_ref)))      
-    #   else:
-    #     print("warning: out of (HRP) people with matching ethnicity", n_hh, len(p_ref))
-    #     n_hh = len(p_ref)
-
-    # mark people as assigned
-    #p_sample = np.random.choice(p_ref, n_hh, replace=False)
-    #self.p_data.loc[p_sample, "HID"] = h_ref[0:n_hh]
-    #print("assigned", n_hh, "HRPs")
-
+  # TODO generalise, or be explicit about what its matching closest to
   def get_closest_match(self, msoa, age, sex, eth):
     # remove age then find closest
     p_ref = self.p_data.loc[(self.p_data.Area == msoa)
                           & (self.p_data.DC1117EW_C_SEX == sex) 
                           & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                           & (self.p_data.HID == -1)].index
+
+    if len(p_ref) == 0:
+      return []
     diffs = abs(self.p_data.loc[p_ref].DC1117EW_C_AGE - age)
-    i = diffs.index(min(diffs))
 
-    print("diff=",i)
+    # return as array
+    return [diffs.idxmin()]
 
-    return p_ref
+  # def __sample_partner_by_eth(self, msoa, oas, eth):
+  #   # resample adults for non-single adult households (might need to/should relax ethnicity)
+  #   p2_ref = self.p_data.loc[(self.p_data.Area == msoa) 
+  #                         & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) # 18 actually means 17, so this IS 18 or over
+  #                         & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
+  #                         & (self.p_data.HID == -1)].index
 
-  def __sample_partner_by_eth(self, msoa, oas, eth):
-    # resample adults for non-single adult households (might need to/should relax ethnicity)
-    p2_ref = self.p_data.loc[(self.p_data.Area == msoa) 
-                          & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) # 18 actually means 17, so this IS 18 or over
-                          & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
-                          & (self.p_data.HID == -1)].index
+  #   h2_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
+  #                       & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+  #                       & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3]))
+  #                       & (self.h_data.FILLED == False)].index
 
+  #   n_hh = len(h2_ref)
+  #   if len(p2_ref) < n_hh:
+  #     if self.strictmode:
+  #       raise RuntimeError("error: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+  #     else:
+  #       #warnings.warn("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+  #       print("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+  #       n_hh = len(p2_ref)
+  #     #continue
+    
+  #   # mark people as assigned
+  #   p2_sample = np.random.choice(p2_ref, n_hh, replace=False)
+  #   self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
+  #   print("assigned", n_hh, "adults")
+
+  def __sample_partner(self, msoa, oas):
+
+    # get all couple households in area
     h2_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
-                        & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
                         & (self.h_data.LC4408_C_AHTHUK11.isin([2, 3]))
                         & (self.h_data.FILLED == False)].index
 
-    n_hh = len(h2_ref)
-    if len(p2_ref) < n_hh:
-      if self.strictmode:
-        raise RuntimeError("error: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
-      else:
-        #warnings.warn("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
-        print("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
-        n_hh = len(p2_ref)
-      #continue
+    # loop over households
+    for idx in h2_ref:
+      # get HRP
+      hrpid = self.h_data.loc[idx,"HRPID"]
+      hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
+      hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
+      hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
+      #print(hrp_age, hrp_sex, hrp_eth)
+      # sample partner dist for HRP age and ethnicity
+      dist = self.partner_hrp_dist.loc[(self.partner_hrp_dist.agehrp == hrp_age)
+                                     & (self.partner_hrp_dist.ethhuk11 == hrp_eth)]
+
+      partner_sample = dist.sample(1, weights=dist.n).index
+      age = self.partner_hrp_dist.loc[partner_sample, "age"]
+      sex = self.partner_hrp_dist.loc[partner_sample, "samesex"]
+      # if self.partner_hrp_dist.loc[partner_sample, "samesex"] == True:
+      #   sex = hrp_sex
+      # else:
+      #   sex = 2 - hrp_sex
+      eth = self.partner_hrp_dist.loc[partner_sample, "ethnicityew"]
+      print(hrp_age, hrp_sex, hrp_eth, "->", age, sex, eth)
+                  
+
+
+    # n_hh = len(h2_ref)
+    # if len(p2_ref) < n_hh:
+    #   if self.strictmode:
+    #     raise RuntimeError("error: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+    #   else:
+    #     #warnings.warn("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+    #     print("warning: out of (adult) people with matching ethnicity:" + str(n_hh) + " of " + str(len(p2_ref)))
+    #     n_hh = len(p2_ref)
+    #   #continue
     
-    # mark people as assigned
-    p2_sample = np.random.choice(p2_ref, n_hh, replace=False)
-    self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
-    print("assigned", n_hh, "adults")
+    # # mark people as assigned
+    # p2_sample = np.random.choice(p2_ref, n_hh, replace=False)
+    # self.p_data.loc[p2_sample, "HID"] = h2_ref[0:n_hh] # TODO remove [0:n_hh]?
+    # print("assigned", n_hh, "adults")
 
 
 
@@ -390,6 +433,7 @@ class Assignment:
     hf_ref = self.h_data[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11 == 5) & (self.h_data.LC4404EW_C_SIZHUK11 == occupant)].index
     self.h_data.loc[hf_ref, "FILLED"] = True
 
+  # TODO use microdata rather than rough assumptions about age dist
   def __fill_communal(self, msoa, oas):
 
     # to ensure we dont inadvertently modify a copy rather than the original data just use index
@@ -426,7 +470,6 @@ class Assignment:
     # ignore pylint saying use not/is False - it doesnt work
     print("H rem:", len(self.h_data[(self.h_data.FILLED == False)
                                   & (self.h_data.LC4408_C_AHTHUK11 > 0)]), "(+", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 == -1]), ")")
-
 
   def check(self):
 
