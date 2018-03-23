@@ -92,44 +92,47 @@ class Assignment:
       self.__sample_hrp(msoa, oas)
       self.stats()
 
-      print("assigning partners to HRPs where appropriate")
-      self.__sample_partner(msoa, oas)
-      self.stats()
+      # print("assigning partners to HRPs where appropriate")
+      # self.__sample_partner(msoa, oas)
+      # self.stats()
 
-      print("assigning child 1 to single-parent households")
-      self.__sample_single_parent_child(msoa, oas, 2, mark_filled=True)
-      self.stats()
+      # print("assigning child 1 to single-parent households")
+      # self.__sample_single_parent_child(msoa, oas, 2, mark_filled=True)
+      # self.stats()
 
-      print("assigning child 2 to single-parent households")
-      self.__sample_single_parent_child(msoa, oas, 3, mark_filled=True)
-      self.stats()
+      # print("assigning child 2 to single-parent households")
+      # self.__sample_single_parent_child(msoa, oas, 3, mark_filled=True)
+      # self.stats()
 
-      print("assigning child 3 to single-parent households")
-      self.__sample_single_parent_child(msoa, oas, 4, mark_filled=False)
-      self.stats()
+      # print("assigning child 3 to single-parent households")
+      # self.__sample_single_parent_child(msoa, oas, 4, mark_filled=False)
+      # self.stats()
 
-      # TODO if partner hasnt been assigned then household may be incorrectly marked filled
-      print("assigning child 1 to couple households")
-      self.__sample_couple_child(msoa, oas, 3, mark_filled=True)
-      self.stats()
+      # # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+      # print("assigning child 1 to couple households")
+      # self.__sample_couple_child(msoa, oas, 3, mark_filled=True)
+      # self.stats()
 
-      # TODO if partner hasnt been assigned then household may be incorrectly marked filled
-      print("assigning child 2 to single-parent households")
-      self.__sample_couple_child(msoa, oas, 4, mark_filled=False)
-      self.stats()
+      # # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+      # print("assigning child 2 to single-parent households")
+      # self.__sample_couple_child(msoa, oas, 4, mark_filled=False)
+      # self.stats()
 
-      print("multi-person households")
-      self.__fill_multi(msoa, oas, 2)
-      self.__fill_multi(msoa, oas, 3)
-      self.__fill_multi(msoa, oas, 4, mark_filled=False)
-      self.stats()
+      # print("multi-person households")
+      # self.__fill_multi(msoa, oas, 2)
+      # self.__fill_multi(msoa, oas, 3)
+      # self.__fill_multi(msoa, oas, 4, mark_filled=False)
+      # self.stats()
 
-      print("assigning people to communal establishments")
-      self.__fill_communal(msoa, oas)
-      self.stats()
+      # print("assigning people to communal establishments")
+      # self.__fill_communal(msoa, oas)
+      # self.stats()
 
     self.check()
     # write results
+    self.write_results()
+
+  def write_results(self):
     h_file = self.output_dir + "/ass_hh_" + self.region + "_OA11_" + str(self.year) + ".csv"
     p_file = self.output_dir + "/ass_" + self.region + "_MSOA11_" + str(self.year) + ".csv"
     self.h_data.to_csv(h_file)
@@ -143,10 +146,10 @@ class Assignment:
       if eth < 0:
         continue
       
-      # get all the households in the area 
+      # get all the occupied households with the same eth in the area 
       h_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
                             & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
-                            & (self.h_data.FILLED == False)].index
+                            & (self.h_data.HRPID == -1)].index
 
       n_hh = len(h_ref)
 
@@ -179,6 +182,8 @@ class Assignment:
         if len(p_ref) == 0:
           print("HRP not found:", age, sex, eth) #, hrp_eth_dist[sample_idx])
         else: # just take first available person
+          if p_ref[0] == -1:
+            raise RuntimeError("invalid p_ref")
           self.p_data.loc[p_ref[0], "HID"] = h_ref[h_index]
           self.h_data.loc[h_ref[h_index], "HRPID"] = p_ref[0]
           # mark household filled if single person
@@ -195,8 +200,17 @@ class Assignment:
                           & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                           & (self.p_data.HID == -1)].index
 
+    # if no unassigned people, relax the eth constraint
+    if len(p_ref) == 0:
+      p_ref = self.p_data.loc[(self.p_data.Area == msoa)
+                            & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE)
+                            & (self.p_data.DC1117EW_C_SEX == sex) 
+                            & (self.p_data.HID == -1)].index
+      
+    # if still no unassigned people, give up
     if len(p_ref) == 0:
       return []
+
     diffs = abs(self.p_data.loc[p_ref].DC1117EW_C_AGE - age)
 
     # return as array
@@ -210,6 +224,13 @@ class Assignment:
                           & (self.p_data.DC1117EW_C_SEX == sex) 
                           & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
                           & (self.p_data.HID == -1)].index
+
+    # if no unassigned children, relax the eth constraint
+    if len(p_ref) == 0:
+      p_ref = self.p_data.loc[(self.p_data.Area == msoa)
+                            & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE)
+                            & (self.p_data.DC1117EW_C_SEX == sex) 
+                            & (self.p_data.HID == -1)].index
 
     if len(p_ref) == 0:
       return []
@@ -230,7 +251,8 @@ class Assignment:
       # get HRP
       hrpid = self.h_data.loc[idx, "HRPID"]
       if hrpid == -1:
-        print("HRPID -1 at h_data index", idx)
+        print("ERROR: HRPID -1 at h_data index", idx)
+        self.write_results()
       hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
       hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
       hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
@@ -241,8 +263,9 @@ class Assignment:
 
       # TODO may need to ensure nonempty
       if len(dist) == 0:
-        print("partner-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth)
-        continue
+        print("partner-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without eth constraint")
+        dist = self.partner_hrp_dist.loc[self.partner_hrp_dist.agehrp == hrp_age]
+
       partner_sample = dist.sample(1, weights=dist.n).index.values[0]
 
       age = self.partner_hrp_dist.loc[partner_sample, "age"]
@@ -286,7 +309,9 @@ class Assignment:
       hrpid = self.h_data.loc[idx, "HRPID"]
       # TODO fix this bug...HRP should never be -1?
       if hrpid == -1:
-        print("HRPID -1 at h_data index idx")
+        print("HRPID -1 at h_data index", idx)
+        self.write_results()
+
       hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
       hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
       hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
@@ -297,8 +322,9 @@ class Assignment:
 
       # TODO may need to ensure nonempty
       if len(dist) == 0:
-        print("child-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth)
-        continue
+        print("child-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without eth constraint")
+        dist = self.child_hrp_dist.loc[self.child_hrp_dist.agehrp == hrp_age]
+        
       child_sample = dist.sample(1, weights=dist.n).index.values[0]
 
       age = self.child_hrp_dist.loc[child_sample, "age"]
@@ -337,7 +363,9 @@ class Assignment:
       # get HRP
       hrpid = self.h_data.loc[idx, "HRPID"]
       if hrpid == -1:
-        print("HRPID -1 at h_data index idx")
+        print("HRPID -1 at h_data index", idx)
+        self.write_results()
+
       hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
       hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
       hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
@@ -504,6 +532,9 @@ class Assignment:
   def check(self):
 
     print("CHECKING...")
+
+    print("occupied household without HRP:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.HRPID == -1)]))
+    
     print("occupied households not filled", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.FILLED == False)]), 
       "of", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 > 0]))
     print("communal residences not filled:", len(self.h_data[(self.h_data.CommunalSize >= 0) 
@@ -536,7 +567,11 @@ class Assignment:
                                                                           & (self.h_data.LC4404EW_C_SIZHUK11 == 4) 
                                                                           & (self.h_data.FILLED == False)]))
 
-    print("mixed households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
+    print("mixed (2,3) households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
+                                                        & (self.h_data.LC4404EW_C_SIZHUK11 < 4)
+                                                        & (self.h_data.FILLED == False)]))
+
+    print("mixed (4+) households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
                                                         & (self.h_data.FILLED == False)]))
 
     print("adults not assigned", len(self.p_data[(self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) & (self.p_data.HID == -1)]),
