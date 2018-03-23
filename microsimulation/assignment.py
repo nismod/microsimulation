@@ -1,5 +1,6 @@
 """ assignment.py """
 
+import os.path
 import pandas as pd
 import numpy as np
 
@@ -23,6 +24,11 @@ class Assignment:
 
     h_file = data_dir + "/ssm_hh_" + region + "_OA11_" + str(year) + ".csv"
     p_file = data_dir + "/ssm_" + region + "_MSOA11_" + str(year) + ".csv"
+
+    if not os.path.isfile(h_file):
+      raise RuntimeError("household input data not found")
+    if not os.path.isfile(p_file):
+      raise RuntimeError("population input data not found")
 
     self.h_data = pd.read_csv(h_file, index_col="HID")
 
@@ -122,13 +128,12 @@ class Assignment:
       self.__fill_communal(msoa, oas)
       self.stats()
 
-      # write results
-      h_file = self.output_dir + "/ass_hh_" + self.region + "_OA11_" + str(self.year) + ".csv"
-      p_file = self.output_dir + "/ass_" + self.region + "_MSOA11_" + str(self.year) + ".csv"
-      self.h_data.to_csv(h_file)
-      self.p_data.to_csv(p_file)
-
     self.check()
+    # write results
+    h_file = self.output_dir + "/ass_hh_" + self.region + "_OA11_" + str(self.year) + ".csv"
+    p_file = self.output_dir + "/ass_" + self.region + "_MSOA11_" + str(self.year) + ".csv"
+    self.h_data.to_csv(h_file)
+    self.p_data.to_csv(p_file)
 
   def __sample_hrp(self, msoa, oas):
 
@@ -225,7 +230,7 @@ class Assignment:
       # get HRP
       hrpid = self.h_data.loc[idx, "HRPID"]
       if hrpid == -1:
-        print("HRPID -1 at h_data index idx")
+        print("HRPID -1 at h_data index", idx)
       hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
       hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
       hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
@@ -479,6 +484,9 @@ class Assignment:
 
       # No of occupants can be zero, if so just mark as filled and move on
       if nocc > 0:
+        if len(p_ref) < nocc:
+          print("cannot assign to communal")
+          continue 
         # randomly pick occupants
         p_sample = np.random.choice(p_ref, nocc, replace=False)
         # assing a dwelling ref to people
