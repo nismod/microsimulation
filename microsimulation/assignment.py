@@ -52,8 +52,21 @@ class Assignment:
 
     # distributions of various people by age/sex/ethnicity from microdata
     # see Mistral/R/microdata_dists.R
-    self.hrp_dist = pd.read_csv("./data/hrp_dist.csv")
+    self.hrp_dist = {}
+    self.hrp_dist["sgl"] = pd.read_csv("./data/hrp_sgl_dist.csv") # single occupant HRPs
+    self.hrp_dist["cpl"] = pd.read_csv("./data/hrp_cpl_dist.csv") # couple HRPs
+    self.hrp_dist["sp"] = pd.read_csv("./data/hrp_sp_dist.csv") # single parent HRPs
+    self.hrp_dist["mix"] = pd.read_csv("./data/hrp_dist.csv") # all HRPs for now
+
+    self.hrp_index = {}
+    self.hrp_index["sgl"] = [1]
+    self.hrp_index["cpl"] = [2, 3]
+    self.hrp_index["sp"] = [4]
+    self.hrp_index["mix"] = [5]
+    
+    # distribution of partner age/sex/eth by HRP age/sex/eth
     self.partner_hrp_dist = pd.read_csv("./data/partner_hrp_dist.csv")
+    # distribution of child age/sex/eth by HRP age/sex/eth
     self.child_hrp_dist = pd.read_csv("./data/child_hrp_dist.csv")
 
     # make it deterministic
@@ -92,41 +105,55 @@ class Assignment:
       self.__sample_hrp(msoa, oas)
       self.stats()
 
-      # print("assigning partners to HRPs where appropriate")
-      # self.__sample_partner(msoa, oas)
-      # self.stats()
+      # check all occupied households have a HRP assigned
+      if -1 in self.h_data.HRPID:
+        raise RuntimeError("HRP assignment failure")
 
-      # print("assigning child 1 to single-parent households")
-      # self.__sample_single_parent_child(msoa, oas, 2, mark_filled=True)
-      # self.stats()
+      print("assigning partners to HRPs where appropriate")
+      self.__sample_partner(msoa, oas)
+      self.stats()
 
-      # print("assigning child 2 to single-parent households")
-      # self.__sample_single_parent_child(msoa, oas, 3, mark_filled=True)
-      # self.stats()
+      # TODO check all partners assigned...
 
-      # print("assigning child 3 to single-parent households")
-      # self.__sample_single_parent_child(msoa, oas, 4, mark_filled=False)
-      # self.stats()
+      print("assigning child 1 to single-parent households")
+      self.__sample_single_parent_child(msoa, oas, 2, mark_filled=True)
+      self.stats()
 
-      # # TODO if partner hasnt been assigned then household may be incorrectly marked filled
-      # print("assigning child 1 to couple households")
-      # self.__sample_couple_child(msoa, oas, 3, mark_filled=True)
-      # self.stats()
+      print("assigning child 2 to single-parent households")
+      self.__sample_single_parent_child(msoa, oas, 3, mark_filled=True)
+      self.stats()
 
-      # # TODO if partner hasnt been assigned then household may be incorrectly marked filled
-      # print("assigning child 2 to single-parent households")
-      # self.__sample_couple_child(msoa, oas, 4, mark_filled=False)
-      # self.stats()
+      print("assigning child 3 to single-parent households")
+      self.__sample_single_parent_child(msoa, oas, 4, mark_filled=False)
+      self.stats()
 
-      # print("multi-person households")
-      # self.__fill_multi(msoa, oas, 2)
-      # self.__fill_multi(msoa, oas, 3)
-      # self.__fill_multi(msoa, oas, 4, mark_filled=False)
-      # self.stats()
+      # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+      print("assigning child 1 to couple households")
+      self.__sample_couple_child(msoa, oas, 3, mark_filled=True)
+      self.stats()
 
-      # print("assigning people to communal establishments")
-      # self.__fill_communal(msoa, oas)
-      # self.stats()
+      # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+      print("assigning child 2 to single-parent households")
+      self.__sample_couple_child(msoa, oas, 4, mark_filled=False)
+      self.stats()
+
+      print("multi-person households")
+      self.__fill_multi(msoa, oas, 2)
+      self.__fill_multi(msoa, oas, 3)
+      self.__fill_multi(msoa, oas, 4, mark_filled=False)
+      self.stats()
+
+      print("assigning people to communal establishments")
+      self.__fill_communal(msoa, oas)
+      self.stats()
+
+      print("assigning surplus adults")
+      self.__assign_surplus_adults(msoa, oas)
+      self.stats()
+
+      print("assigning surplus children")
+      self.__assign_surplus_children(msoa, oas)
+      self.stats()
 
     self.check()
     # write results
@@ -140,33 +167,32 @@ class Assignment:
 
   def __sample_hrp(self, msoa, oas):
 
-    # Loop over known household ethnicities, sampling from HRP pool for the correct ethnicity
-    for eth in self.h_data.LC4202EW_C_ETHHUK11.unique():
+    for hh_type in self.hrp_dist.keys():
+      print(hh_type, self.hrp_index[hh_type])
 
-      if eth < 0:
-        continue
-      
       # get all the occupied households with the same eth in the area 
       h_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
-                            & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                            & (self.h_data.LC4408_C_AHTHUK11.isin(self.hrp_index[hh_type]))
+#                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
                             & (self.h_data.HRPID == -1)].index
 
       n_hh = len(h_ref)
 
       if n_hh == 0:
-        return
+        continue
 
       # sample from microdata distribution of HRPs for this eth
-      hrp_eth_dist = self.hrp_dist.loc[self.hrp_dist.ethhuk11 == eth]
-      hrp_sample = hrp_eth_dist.sample(n_hh, weights=hrp_eth_dist.n, replace=True).index
+      # hrp_eth_dist = self.hrp_dist[hh_type].loc[self.hrp_dist[hh_type].ethhuk11 == eth]
+      hrp_sample = self.hrp_dist[hh_type].sample(n_hh, weights=self.hrp_dist[hh_type].n, replace=True).index
 
       # now assign HRPs from the population with the sampled age/sex/eth characteristics
       h_index = 0
       for sample_idx in hrp_sample:
 
         #print("sample_idx",sample_idx)
-        age = self.hrp_dist.loc[sample_idx, "age"]
-        sex = self.hrp_dist.loc[sample_idx, "sex"]
+        age = self.hrp_dist[hh_type].loc[sample_idx, "age"]
+        sex = self.hrp_dist[hh_type].loc[sample_idx, "sex"]
+        eth = self.hrp_dist[hh_type].loc[sample_idx, "ethhuk11"]
 
         p_ref = self.p_data.loc[(self.p_data.Area == msoa)
                               & (self.p_data.DC1117EW_C_AGE == age)
@@ -205,6 +231,13 @@ class Assignment:
       p_ref = self.p_data.loc[(self.p_data.Area == msoa)
                             & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE)
                             & (self.p_data.DC1117EW_C_SEX == sex) 
+                            & (self.p_data.HID == -1)].index
+      
+    # if STILL no unassigned people, relax the sex constraint
+    # TODO I suspect we undercount same-sex couples - microdata suggests 0.3% which seems rather low
+    if len(p_ref) == 0:
+      p_ref = self.p_data.loc[(self.p_data.Area == msoa)
+                            & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE)
                             & (self.p_data.HID == -1)].index
       
     # if still no unassigned people, give up
@@ -250,9 +283,7 @@ class Assignment:
     for idx in h2_ref:
       # get HRP
       hrpid = self.h_data.loc[idx, "HRPID"]
-      if hrpid == -1:
-        print("ERROR: HRPID -1 at h_data index", idx)
-        self.write_results()
+
       hrp_age = self.p_data.loc[hrpid, "DC1117EW_C_AGE"]
       hrp_sex = self.p_data.loc[hrpid, "DC1117EW_C_SEX"]
       hrp_eth = self.p_data.loc[hrpid, "DC2101EW_C_ETHPUK11"]
@@ -522,6 +553,37 @@ class Assignment:
       # mark the communal residence as filled
       self.h_data.loc[index, "FILLED"] = True
 
+  def __assign_surplus_adults(self, msoa, oas):
+    # assign remaining adults after minimal assignment to:
+    # - mixed households (for now)
+    # TODO ...but could equally be in single parent or couple households,
+    # or, in fact, empty households
+    # TODO by ethnicity
+
+    p_unassigned = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.DC1117EW_C_AGE > Assignment.ADULT_AGE) & (self.p_data.HID == -1)].index
+
+    n_p = len(p_unassigned)
+
+    h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11 == 5) & (self.h_data.FILLED == False)].index
+
+    h_sample = np.random.choice(h_candidates, n_p, replace=True)
+
+    self.p_data.loc[p_unassigned, "HID"] = h_sample
+
+  def __assign_surplus_children(self, msoa, oas):
+    # assign remaining children after minimal assignment to any household other than single
+    # TODO by ethnicity
+
+    c_unassigned = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) & (self.p_data.HID == -1)].index
+
+    n_c = len(c_unassigned)
+
+    h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) & (self.h_data.FILLED == False)].index
+
+    h_sample = np.random.choice(h_candidates, n_c, replace=True)
+
+    self.p_data.loc[c_unassigned, "HID"] = h_sample
+
 
   def stats(self):
     print("P:", 100 * len(self.p_data[self.p_data.HID > 0]) / len(self.p_data), "rem:", len(self.p_data[self.p_data.HID == -1]))
@@ -533,7 +595,7 @@ class Assignment:
 
     print("CHECKING...")
 
-    print("occupied household without HRP:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.HRPID == -1)]))
+    print("occupied households without HRP:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.HRPID == -1)]))
     
     print("occupied households not filled", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 > 0) & (self.h_data.FILLED == False)]), 
       "of", len(self.h_data[self.h_data.LC4408_C_AHTHUK11 > 0]))
