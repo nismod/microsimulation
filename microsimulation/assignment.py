@@ -81,7 +81,6 @@ class Assignment:
     #print(eths)
     # we have different eth resolution in the (micro)datasets
     eth_mapping = {-1:-1, 2:2, 3:3, 4:4, 5:4, 7:5, 8:5, 9:5, 10:5, 12:6, 13:6, 14:6, 15:6, 16:6, 18:7, 19:7, 20:7, 22:8, 23:8}
-#    self.p_data.replace({"DC2101EW_C_ETHPUK11": eth_mapping})
     # Replace finer ethnicities in population with the OA level / processed microdata values 
     self.p_data.DC2101EW_C_ETHPUK11.replace(eth_mapping, inplace=True)
 
@@ -173,7 +172,7 @@ class Assignment:
       # get all the occupied households with the same eth in the area 
       h_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
                             & (self.h_data.LC4408_C_AHTHUK11.isin(self.hrp_index[hh_type]))
-#                              & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                            # & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
                             & (self.h_data.HRPID == -1)].index
 
       n_hh = len(h_ref)
@@ -296,6 +295,9 @@ class Assignment:
       if len(dist) == 0:
         print("partner-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without eth constraint")
         dist = self.partner_hrp_dist.loc[self.partner_hrp_dist.agehrp == hrp_age]
+        if len(dist) == 0:
+          print("partner-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without age/eth constraints")
+          dist = self.partner_hrp_dist
 
       partner_sample = dist.sample(1, weights=dist.n).index.values[0]
 
@@ -572,17 +574,25 @@ class Assignment:
 
   def __assign_surplus_children(self, msoa, oas):
     # assign remaining children after minimal assignment to any household other than single
-    # TODO by ethnicity
+    # TODO allow ethnicity of other adult(s) in household
 
-    c_unassigned = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) & (self.p_data.HID == -1)].index
+    for eth in [2, 3, 4, 5, 6, 7,8]:
 
-    n_c = len(c_unassigned)
+      c_unassigned = self.p_data.loc[(self.p_data.Area == msoa) 
+                                   & (self.p_data.DC2101EW_C_ETHPUK11 == eth)
+                                   & (self.p_data.DC1117EW_C_AGE <= Assignment.ADULT_AGE) 
+                                   & (self.p_data.HID == -1)].index
 
-    h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) & (self.h_data.FILLED == False)].index
+      n_c = len(c_unassigned)
 
-    h_sample = np.random.choice(h_candidates, n_c, replace=True)
+      h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) 
+                                   & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                                   & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) 
+                                   & (self.h_data.FILLED == False)].index
 
-    self.p_data.loc[c_unassigned, "HID"] = h_sample
+      h_sample = np.random.choice(h_candidates, n_c, replace=True)
+
+      self.p_data.loc[c_unassigned, "HID"] = h_sample
 
 
   def stats(self):
