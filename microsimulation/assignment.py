@@ -590,7 +590,8 @@ class Assignment:
                                    & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) 
                                    & (self.h_data.FILLED == False)].index
 
-      h_sample = np.random.choice(h_candidates, n_c, replace=True)
+      if len(h_candidates):
+        h_sample = np.random.choice(h_candidates, n_c, replace=True)
 
       self.p_data.loc[c_unassigned, "HID"] = h_sample
 
