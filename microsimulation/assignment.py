@@ -593,7 +593,7 @@ class Assignment:
       if len(h_candidates) and n_c:
         h_sample = np.random.choice(h_candidates, n_c, replace=True)
 
-      self.p_data.loc[c_unassigned, "HID"] = h_sample
+        self.p_data.loc[c_unassigned, "HID"] = h_sample
 
 
   def stats(self):
