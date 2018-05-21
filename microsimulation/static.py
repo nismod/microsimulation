@@ -6,6 +6,8 @@ import pandas as pd
 #from random import randint
 
 import humanleague as hl
+import population.nppdata as nppdata
+import population.snppdata as snppdata
 import microsimulation.utils as Utils
 import microsimulation.common as Common
 
@@ -27,11 +29,18 @@ class SequentialMicrosynthesis(Common.Base):
     self.output_dir = output_dir
     self.fast_mode = fast_mode
 
+    # init the population (projections) modules
+    self.npp_api = nppdata.NPPData(cache_dir)
+    self.snpp_api = snppdata.SNPPData(cache_dir)
+
     # (down)load the mid-year estimates
     self.__get_mye_data()
 
     # load the subnational population projections
     self.__get_snpp_data()
+
+    # load the national (principal) population projections
+    self.__get_npp_principal_data()
 
     # TODO enable 2001 ref year
     # (down)load the census 2011 tables
@@ -227,27 +236,19 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __get_snpp_data(self):
     """
-    Loads preprocessed raw subnational population projection data (currently 2014-based)
-    Download from: https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2014based/snppz1population.zip
-    See the R script scripts/preprocess_snpp.R
+    Uses the population module to retrieve the SNPP data projection for all UK LAD/LAD-equvialents
     """
-    #self.snpp_old = pd.read_csv(self.data_api.cache_dir + "snpp" + str(SequentialMicrosynthesis.SNPP_YEAR) + ".csv") #TODO?, index_col="GEOGRAPHY_CODE")
+    # get all the data
+    # ages have 1 added then collapsed to 85+ for census consistency
+    self.snpp_api.data.to_csv("snpp.csv", index=False)
+    self.snpp = Utils.adjust_mye_age(self.snpp_api.data, decrement=-1)
 
-    # TODO resolve geog - wales?
+  def __get_npp_principal_data(self):
+    """ 
+    Uses the population module to retrieve the NPP principal projection for all UK countries (E, W, S, NI)
+    """
+    self.npp = self.npp_api.detail("ppp", self.npp_api.UK) # years=range(2016,2117)
+    # ages have 1 added then collapsed to 85+ for census consistency
+    # TODO better to use actual ages...
+    self.npp = Utils.adjust_mye_age(self.npp, decrement=-1) 
 
-    # need to do this in 2 batches as entire table has >1000000 rows
-    table_internal = "NM_2006_1" # 2014-based SNPP
-    query_params = {
-      "gender": "1,2",
-      "c_age": "101...191",
-      "MEASURES": "20100",
-      "date": "latest", # 2014-based
-      "projected_year": "2014...2027",
-      "select": "geography_code,projected_year_name,gender,c_age,obs_value",
-      "geography": "1946157057...1946157382"
-    }
-    self.snpp = self.data_api.get_data(table_internal, query_params)
-
-    query_params["projected_year"] = "2028...2039"
-    self.snpp = self.snpp.append(self.data_api.get_data(table_internal, query_params))
-    self.snpp = Utils.adjust_mye_age(self.snpp)

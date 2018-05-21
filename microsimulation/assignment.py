@@ -48,7 +48,7 @@ class Assignment:
       print("Relaxed assignment mode - assignment will sample as many people as it can in any category of the sample population")
 
     # get OA<->MSOA mapping
-    self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv")
+    self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv.gz", compression="infer")
 
     # distributions of various people by age/sex/ethnicity from microdata
     # see Mistral/R/microdata_dists.R

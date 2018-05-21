@@ -5,6 +5,15 @@ utility functions
 import numpy as np
 import humanleague as hl
 
+def relEqual(x, y, tol = 2**-26): 
+  """
+  Simple test for relative equality of floating point within tolerance
+  Default tolerance is sqrt double epsilon i.e. about 7.5 significant figures
+  """
+  if y == 0:
+    return x == 0
+  return abs(float(x) / float(y) - 1.) < tol
+
 def create_age_sex_marginal(est, lad):
   """
   Generate age-by-sex marginal from estimated (MYE/SNPP) data
@@ -36,9 +45,9 @@ def remap(indices, mapping):
   return values
 
 
-def adjust_mye_age(mye):
+def adjust_mye_age(mye, decrement=100):
   """
-  Makes mid-year estimate data conform with census age categories:
+  Makes mid-year estimate/snpp data conform with census age categories:
   - subtract 100 from age (so that "1" means under 1)
   - aggregate 86,87,88,89,90,91 into 86 (meaning 85+)
   """
@@ -47,7 +56,7 @@ def adjust_mye_age(mye):
   pop_m = mye[mye.GENDER == 1].OBS_VALUE.sum()
   pop_a = mye[mye.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
 
-  mye.C_AGE -= 100
+  mye.C_AGE -= decrement
 
   mye_adj = mye[mye.C_AGE < 86].copy()
   mye_over85 = mye[mye.C_AGE > 85].copy()
@@ -60,10 +69,10 @@ def adjust_mye_age(mye):
 
   mye_adj = mye_adj.append(agg85)
 
-  # ensure the totals in the adjusted table match the originals
-  assert mye_adj.OBS_VALUE.sum() == pop
-  assert mye_adj[mye_adj.GENDER == 1].OBS_VALUE.sum() == pop_m
-  assert mye_adj[mye_adj.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum() == pop_a
+  # ensure the totals in the adjusted table match the originals (within precision)
+  assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
+  assert relEqual(mye_adj[mye_adj.GENDER == 1].OBS_VALUE.sum(), pop_m)
+  assert relEqual(mye_adj[mye_adj.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum(), pop_a)
 
   return mye_adj
 

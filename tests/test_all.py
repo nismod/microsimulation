@@ -43,7 +43,7 @@ class Test(TestCase):
     region = "E09000001"
     year = 2011
     data_dir = "./data"
-    assign = Assignment.Assignment(region, year, False, data_dir, data_dir)
+    assign = Assignment.Assignment(region, year, False, data_dir)
     assign.run()
     #self.assertTrue(False)
 
