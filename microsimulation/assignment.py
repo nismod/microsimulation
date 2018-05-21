@@ -53,10 +53,10 @@ class Assignment:
     # distributions of various people by age/sex/ethnicity from microdata
     # see Mistral/R/microdata_dists.R
     self.hrp_dist = {}
-    self.hrp_dist["sgl"] = pd.read_csv("./data/hrp_sgl_dist.csv") # single occupant HRPs
-    self.hrp_dist["cpl"] = pd.read_csv("./data/hrp_cpl_dist.csv") # couple HRPs
-    self.hrp_dist["sp"] = pd.read_csv("./data/hrp_sp_dist.csv") # single parent HRPs
-    self.hrp_dist["mix"] = pd.read_csv("./data/hrp_dist.csv") # all HRPs for now
+    self.hrp_dist["sgl"] = pd.read_csv("./persistent_data/hrp_sgl_dist.csv") # single occupant HRPs
+    self.hrp_dist["cpl"] = pd.read_csv("./persistent_data/hrp_cpl_dist.csv") # couple HRPs
+    self.hrp_dist["sp"] = pd.read_csv("./persistent_data/hrp_sp_dist.csv") # single parent HRPs
+    self.hrp_dist["mix"] = pd.read_csv("./persistent_data/hrp_dist.csv") # all HRPs for now
 
     self.hrp_index = {}
     self.hrp_index["sgl"] = [1]
@@ -590,7 +590,7 @@ class Assignment:
                                    & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) 
                                    & (self.h_data.FILLED == False)].index
 
-      if len(h_candidates):
+      if len(h_candidates) and n_c:
         h_sample = np.random.choice(h_candidates, n_c, replace=True)
 
       self.p_data.loc[c_unassigned, "HID"] = h_sample
