@@ -1,13 +1,21 @@
 *[work-in-progress]*
 
 # microsimulation
-Static and dynamic, population and household, microsimulation models. Current status:
+Static and dynamic, population and household, microsimulation models. Take a base population and project it forward using various methodologies.
+
+Current status:
 - [X] static population microsimulation: refinement/testing
-- [X] static household microsimulation: refinement/testing
 - [ ] dynamic population microsimulation: in prototype, reimplementation in progress
-- [X] dynamic househould microsimulation: basic model
-- [X] population-househould assignement algorithm : basic implementation
+- [X] quasi-dynamic househould microsimulation: basic model
+- [X] population-househould assignment algorithm : basic implementation
 - [ ] coupled dynamic household-population microsimulation: drawing board
+
+## Explanation of terms
+- microsynthesis: generating a synthetic population from aggregate (categorical) data and (usually) joint distribution data
+- microsimulation: evolving a (microsynthesised) population forward in time
+- static: in this context, this means generating a synthetic population using estimated aggregate data, and a microsynthesis as a joint distribution
+- dynamic: in this context, this means evolving each entity as a dynamic progress, typically probabilistically. E.g. using Monte-Carlo and fertility/mortality/migration rates.
+- quasi-dynamic: in this context, a simplistic evolution whereby existing entities persist according to a survival probability and new entities are created to match a static estimate. 
 
 ## Introduction
 ### Static Microsimulation - Population
@@ -53,11 +61,11 @@ NB Ensure you install humanleague version 2 or higher - this package uses featur
 ./setup.py install
 ./setup.py test
 ```
-### Running static microsimulation
+### Running a static population microsimulation
 ```
 scripts/run_ssm.py config-file
 ```
-where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subduriectory of this package.
+where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subdirectory of this package.
 ```json
 {
   "regions": ["E09000001"],
@@ -71,9 +79,29 @@ where config-file is a JSON file containing the model parameters and settings. E
   "output_dir": "./data"
 }
 ```
+### Running a household microsimulation
+```
+scripts/run_ssm_h.py config-file
+```
+where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subdirectory of this package.
+```json
+{
+  "regions": ["E09000001"],
+  "resolution": "OA11",
+  "projection": "ppp",
+  "census_ref_year": 2011,
+  "projection_ref_year": 2014,
+  "horizon_year": 2020,
+  "upstream_dir": "../household_microsynth/data",
+  "input_dir": "./persistent_data",
+  "output_dir": "./data"
+}
+```
+
+
 ### Running dynamic population microsimulation
 
 ```
 scripts/run_microsynth.py E09000001 MSOA11 2001 2039
 ```
-NB Runtime for a medium-sized local authgority for all 39 years is likely to be well over 24h.
+NB Runtime for a medium-sized local authority for all 39 years is likely to be well over 24h.
