@@ -18,14 +18,13 @@ class SequentialMicrosynthesisH:
   # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
   SNHP_YEAR = 2014
 
-  def __init__(self, region, resolution, upstream_dir, input_dir, output_dir, fast_mode=False):
+  def __init__(self, region, resolution, upstream_dir, input_dir, output_dir):
 
     self.region = region
     self.resolution = resolution
     self.upstream_dir = upstream_dir
     self.input_dir = input_dir
     self.output_dir = output_dir
-    self.fast_mode = fast_mode
 
     # load the subnational household projections
     self.__get_snhp_data()
@@ -60,8 +59,8 @@ class SequentialMicrosynthesisH:
     if target_year > SequentialMicrosynthesisH.SNHP_YEAR + 25:
       raise ValueError(str(SequentialMicrosynthesisH.SNHP_YEAR + 25) + " is the current latest supported end year")
 
-    if self.fast_mode:
-      print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
+    # if self.fast_mode:
+    #   print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
     print("Starting microsynthesis sequence...")
 
@@ -108,9 +107,9 @@ class SequentialMicrosynthesisH:
     # for cat in categories:
     #   print(cat, len(self.base_population[self.base_population.LC4402_C_TENHUK11 == cat]), len(sample[sample.LC4402_C_TENHUK11 == cat]))
 
-    if failures and not self.fast_mode:
-      print("\n".join(failures))
-      raise RuntimeError("Consistency checks failed, see log for further details")
+    # if failures and not self.fast_mode:
+    #   print("\n".join(failures))
+    #   raise RuntimeError("Consistency checks failed, see log for further details")
 
   def __get_snhp_data(self):
     """
