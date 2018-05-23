@@ -13,8 +13,9 @@ class Test(TestCase):
   def test_static(self):
     region = "E09000001"
     resolution = "MSOA11"
+    variant = "ppp"
     cache = "./cache"
-    microsim = Static.SequentialMicrosynthesis(region, resolution, cache)
+    microsim = Static.SequentialMicrosynthesis(region, resolution, variant, cache, "./data", True)
     microsim.run(2011, 2012)
 
   def test_static_h(self):

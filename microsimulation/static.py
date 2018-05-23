@@ -19,15 +19,13 @@ class SequentialMicrosynthesis(Common.Base):
   based microsimulation
   """
 
-  # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
-  SNPP_YEAR = 2014
-
-  def __init__(self, region, resolution, cache_dir="./cache", output_dir="./data", fast_mode=False):
+  def __init__(self, region, resolution, variant, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
     Common.Base.__init__(self, region, resolution, cache_dir)
 
     self.output_dir = output_dir
     self.fast_mode = fast_mode
+    self.variant = variant
 
     # init the population (projections) modules
     self.npp_api = nppdata.NPPData(cache_dir)
@@ -42,7 +40,13 @@ class SequentialMicrosynthesis(Common.Base):
     # load the national (principal) population projections
     self.__get_npp_principal_data()
 
-    # TODO enable 2001 ref year
+    # validation
+    if not self.variant in nppdata.NPPData.VARIANTS:
+      raise ValueError(self.variant + " is not a known projection variant")
+    if not isinstance(self.fast_mode, bool):
+      raise ValueError("fast mode should be boolean")
+
+    # TODO enable 2001 ref year?
     # (down)load the census 2011 tables
     self.__get_census_data()
 
@@ -51,9 +55,7 @@ class SequentialMicrosynthesis(Common.Base):
     Run the sequence
     """
 
-    # TODO enable 2001 ref year
-    # if ref_year != 2001 or ref_year != 2011:
-    #   raise ValueError("(census) reference year must be either 2001 or 2011")
+    # TODO enable 2001 ref year?
 
     if ref_year != 2011:
       raise ValueError("(census) reference year must be 2011")
@@ -61,20 +63,27 @@ class SequentialMicrosynthesis(Common.Base):
     if target_year < 2001:
       raise ValueError("2001 is the earliest supported target year")
 
-    if target_year > SequentialMicrosynthesis.SNPP_YEAR + 25:
-      raise ValueError(str(SequentialMicrosynthesis.SNPP_YEAR + 25) + " is the current latest supported end year")
+    # TODO extend to NPP 
+    if target_year > self.snpp_api.max_year():
+      raise ValueError(str(self.snpp_api.max_year()) + " is the current latest supported end year")
 
     if self.fast_mode:
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
     print("Starting microsynthesis sequence...")
     for year in Utils.year_sequence(ref_year, target_year):
-      out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + str(year) + ".csv"
+      out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + self.variant + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
       # TODO make them consistent?
       # With dynamic update of seed for now just recompute even if file exists
       #if not os.path.isfile(out_file):
-      print("Generating ", out_file, " [MYE] " if year < SequentialMicrosynthesis.SNPP_YEAR else " [SNPP]", "... ",
+      if year < self.snpp_api.min_year():
+        source = " [MYE]"
+      elif year <= self.snpp_api.max_year():  
+        source = " [SNPP]"
+      else:
+        source = " [XNPP]"
+      print("Generating ", out_file, source, "... ",
             sep="", end="", flush=True)
       msynth = self.__microsynthesise(year)
       print("OK")
@@ -91,8 +100,7 @@ class SequentialMicrosynthesis(Common.Base):
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
-    # TODO perhaps just pass the year?...
-    if year < self.SNPP_YEAR:
+    if year < self.snpp_api.min_year():
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
     else:
       age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)

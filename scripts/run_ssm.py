@@ -3,49 +3,52 @@
 """ run script for static sequential microsynthesis """
 
 import time
-import argparse
 import microsimulation.static as Static
+import microsimulation.utils as utils
 
 #assert humanleague.version() > 1
-CACHE_DIR = "./cache"
-OUTPUT_DIR = "./data"
+DEFAULT_CACHE_DIR = "./cache"
+DEFAULT_OUTPUT_DIR = "./data"
 
 def main(params):
   """ Run it """
 
-  # start timing
-  start_time = time.time()
+  resolution = params["resolution"]
+  ref_year = params["census_ref_year"]
+  horizon_year = params["horizon_year"]
+  variant = params["projection"]
+  
+  cache_dir = params["cache_dir"] if "cache_dir" in params else DEFAULT_CACHE_DIR
+  output_dir = params["output_dir"] if "output_dir" in params else DEFAULT_OUTPUT_DIR
 
-  # TODO will fail if region specified as text
-  print("Static Microsimulation region:", params.region)
-  print("Static Microsimulation resolution:", params.resolution)
+  use_fast_mode = params["mode"] == "fast"
 
-  # init microsynthesis
-  try:
-    ssm = Static.SequentialMicrosynthesis(params.region, params.resolution, CACHE_DIR, OUTPUT_DIR, params.fast)
-  except Exception as e:
-    print(e)
-    return
+  for region in params["regions"]:
+    # start timing
+    start_time = time.time()
 
-  # generate the population
-  try:
-    ssm.run(params.ref_year, params.target_year)
-  except Exception as e:
-    print("ERROR:", e)
-    return
+    # TODO will fail if region specified as text
+    print("Static Microsimulation region:", region)
+    print("Static Microsimulation resolution:", resolution)
 
-  print("Done. Exec time(s): ", time.time() - start_time)
+    # init microsynthesis
+    try:
+      ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
+    except Exception as e:
+      print(e)
+      return
+
+    # generate the population
+    #try:
+    ssm.run(ref_year, horizon_year)
+    #except Exception as e:
+    #  print("ERROR:", e)
+    #  return
+
+    print(region, "done. Exec time(s): ", time.time() - start_time)
+  print("all done")
 
 if __name__ == "__main__":
 
-  parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
-
-  parser.add_argument("region", type=str, help="the ONS code of the local authority district (LAD) to be covered by the microsynthesis, e.g. E09000001")
-  parser.add_argument("resolution", type=str, help="the geographical resolution of the microsynthesis (e.g. OA11, LSOA11, MSOA11)")
-  parser.add_argument("ref_year", type=int, help="the reference (i.e. census) year for the microsimulation (either 2001 or 2011)")
-  parser.add_argument("target_year", type=int, help="the target (end) year for the microsimulation (max 2039)")
-  parser.add_argument("-f", "--fast", action='store_const', const=True, default=False, help="use imprecise (but fast) generation")
-
-  args = parser.parse_args()
-
-  main(args)
+  params = utils.get_config()
+  main(params)

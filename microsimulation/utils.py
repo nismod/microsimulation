@@ -2,8 +2,21 @@
 utility functions
 """
 
+import argparse
+import json
 import numpy as np
 import humanleague as hl
+
+def get_config():
+  parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
+
+  parser.add_argument("config_file", type=str, help="the model configuration file (json). See config/example.json")
+
+  args = parser.parse_args()
+
+  with open(args.config_file) as config_file:
+    params = json.load(config_file)
+  return params
 
 def relEqual(x, y, tol = 2**-26): 
   """
