@@ -5,13 +5,15 @@ Static and dynamic, population and household, microsimulation models. Current st
 - [X] static population microsimulation: refinement/testing
 - [X] static household microsimulation: refinement/testing
 - [ ] dynamic population microsimulation: in prototype, reimplementation in progress
-- [ ] dynamic househould microsimulation: drawing board
+- [X] dynamic househould microsimulation: basic model
+- [X] population-househould assignement algorithm : basic implementation
+- [ ] coupled dynamic household-population microsimulation: drawing board
 
 ## Introduction
 ### Static Microsimulation - Population
 This refers to a sequence of microsyntheses, seeded with 2011 census data, with marginals from ONS mid-year-estimates (2001-2013) and ONS sub-national population projections (2014-2039).
 - limited categories available: gender, age, ethnicity.
-- highest geographical resolution is currently limited to MSOA.
+- highest geographical resolution is currently limited to MSOA (census tables with single year of age are not available at a lower resolution)
 
 ### Static Microsimulation - Households
 This refers to a sequence of microsyntheses, seeded with microsynthesised data, with overall counts coming from DCLG household forcasts (1991-2039).
@@ -28,13 +30,19 @@ Based on provided fertility, mortality and migration data and guided by static m
 
 - `python3`
 
-The following are specified in `requirements.txt` and should be automatically installed, manual steps are shown below just in case. 
+The following packages are specified in `requirements.txt` and should be automatically installed, manual steps are shown below just in case. 
 
-- [UKCensusAPI](https://github.com/virgesmith/UKCensusAPI)
+- [UKCensusAPI](https://github.com/virgesmith/UKCensusAPI): wrapper around the nomisweb API for census data
 ```
 pip3 install git+git://github.com/virgesmith/UKCensusAPI.git
 ```
-- [humanleague](https://github.com/virgesmith/humanleague)
+
+- [population](https://github.com/nismod/population): wrapper around national and subnational population projection data
+```
+pip3 install git+git://github.com/nismod/population.git
+```
+
+- [humanleague](https://github.com/virgesmith/humanleague): microsynthesis package
 ```
 pip3 install git+git://github.com/virgesmith/humanleague.git
 ```
@@ -45,11 +53,26 @@ NB Ensure you install humanleague version 2 or higher - this package uses featur
 ./setup.py install
 ./setup.py test
 ```
-### Running static microsynthesis
+### Running static microsimulation
 ```
-scripts/run_ssm.py <region(s)> <resolution> <start_year> <end_year> 
+scripts/run_ssm.py config-file
 ```
-where region can be a one or more local authorities (or one of England, EnglandWales, GB, UK), specified by ONS/GSS code (e.g. E09000001 for the City of London). Resolution (for now) must be MSOA11. Start and end years must be in the range 2001-2016.
+where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subduriectory of this package.
+```json
+{
+  "regions": ["E09000001"],
+  "resolution": "MSOA11",
+  "projection": "ppp",
+  "census_ref_year": 2011,
+  "projection_ref_year": 2014,
+  "horizon_year": 2039,
+  "mode": "fast",
+  "cache_dir": "./cache",
+  "output_dir": "./data"
+}
+```
+### Running dynamic population microsimulation
+
 ```
 scripts/run_microsynth.py E09000001 MSOA11 2001 2039
 ```
