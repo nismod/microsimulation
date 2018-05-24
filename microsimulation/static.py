@@ -6,8 +6,8 @@ import pandas as pd
 #from random import randint
 
 import humanleague as hl
-import population.nppdata as nppdata
-import population.snppdata as snppdata
+import ukpopulation.nppdata as nppdata
+import ukpopulation.snppdata as snppdata
 import microsimulation.utils as Utils
 import microsimulation.common as Common
 
