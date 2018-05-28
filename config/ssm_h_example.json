@@ -1,5 +1,5 @@
 {
-  "regions": ["E09000001"],
+  "//": "See README.md for details",
   "resolution": "OA11",
   "projection": "ppp",
   "census_ref_year": 2011,

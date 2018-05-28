@@ -27,22 +27,15 @@ def main(params):
     # start timing
     start_time = time.time()
 
-    # TODO will fail if region specified as text
     print("Static P Microsimulation: ", region, "@", resolution)
 
     # init microsynthesis
     try:
       ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
+      ssm.run(ref_year, horizon_year)
     except Exception as e:
       print(e)
       return
-
-    # generate the population
-    #try:
-    ssm.run(ref_year, horizon_year)
-    #except Exception as e:
-    #  print("ERROR:", e)
-    #  return
 
     print(region, "done. Exec time(s): ", time.time() - start_time)
   print("all done")

@@ -3,7 +3,7 @@
   "projection": "ppp",
   "census_ref_year": 2011,
   "projection_ref_year": 2014,
-  "horizon_year": 2019,
+  "horizon_year": 2050,
   "mode": "fast",
   "cache_dir": "./cache",
   "output_dir": "./data"

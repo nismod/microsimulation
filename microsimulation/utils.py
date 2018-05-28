@@ -10,12 +10,15 @@ import humanleague as hl
 def get_config():
   parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
 
-  parser.add_argument("config_file", type=str, help="the model configuration file (json). See config/example.json")
+  parser.add_argument("-c", "--config", type=str, metavar="config-file", help="the model configuration file (json). See config/ssm_example.json")
+  parser.add_argument("regions", type=str, nargs="+", metavar="LAD", help="ONS code for LAD (multiple LADs can be set).")
 
   args = parser.parse_args()
 
-  with open(args.config_file) as config_file:
+  with open(args.config) as config_file:
     params = json.load(config_file)
+  # add the regions
+  params["regions"] = args.regions
   return params
 
 def relEqual(x, y, tol = 2**-26): 
