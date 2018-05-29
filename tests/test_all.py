@@ -42,9 +42,13 @@ class Test(TestCase):
   # City of London assignment 
   def test_z_assign(self):
     region = "E09000001"
+    h_res = "OA11"
+    p_res = "MSOA11"
+    variant = "ppp"
     year = 2011
+    strict_mode = False
     data_dir = "./data"
-    assign = Assignment.Assignment(region, year, False, data_dir)
+    assign = Assignment.Assignment(region, h_res, p_res, year, variant, strict_mode, data_dir)
     assign.run()
     #self.assertTrue(False)
 
