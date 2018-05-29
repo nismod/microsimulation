@@ -8,9 +8,9 @@ import numpy as np
 import humanleague as hl
 
 def get_config():
-  parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
+  parser = argparse.ArgumentParser(description="static sequential (population/household) microsimulation")
 
-  parser.add_argument("-c", "--config", type=str, metavar="config-file", help="the model configuration file (json). See config/ssm_example.json")
+  parser.add_argument("-c", "--config", type=str, metavar="config-file", help="the model configuration file (json). See config/*_example.json")
   parser.add_argument("regions", type=str, nargs="+", metavar="LAD", help="ONS code for LAD (multiple LADs can be set).")
 
   args = parser.parse_args()
