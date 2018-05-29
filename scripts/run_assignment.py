@@ -5,8 +5,9 @@
 import time
 import argparse
 import microsimulation.assignment as Assignment
+import microsimulation.utils as utils
 
-DATA_DIR = "./data"
+DEFAULT_DATA_DIR = "./data"
 
 def main(params):
   """ Run it """
@@ -15,35 +16,34 @@ def main(params):
   start_time = time.time()
 
   # TODO will fail if region specified as text
-  print("Assignment region:", params.region)
-  print("Assignment resolution (hard-coded): OA11(H)/MSOA11(P)", )
-  print("Assignment resolution:", params.year)
 
-  # init assignment algorithm
-  #try:
-  ass = Assignment.Assignment(params.region, params.year, params.strict, DATA_DIR)
-  #except Exception as e:
-  #  print(e)
-  #  return
+  h_res = params["household_resolution"]
+  p_res = params["person_resolution"]
+  year = params["year"]
+  variant = params["projection"]
+  strict = params["strict"]
 
-  # generate the population
-  #try:
-  ass.run()
-  # except Exception as e:
-  #   print("ERROR:", e)
-  #   return
+  print("Assignment region(s):", params["regions"])
+  print("Assignment resolution: {} (H) / {} (P)".format(h_res, p_res)) 
+  print("Projection:", variant)
+  print("Strict assignment mode:", strict)
+  print("Assignment year:", year)
+
+  data_dir = params["data_dir"] if "data_dir" in params else DEFAULT_DATA_DIR
+
+  for region in params["regions"]:
+    # init assignment algorithm
+    #try:
+    # TODO variant / cfg json
+    ass = Assignment.Assignment(region, h_res, p_res, year, variant, strict, data_dir)
+    ass.run()
+    # except Exception as e:
+    #   print("ERROR:", e)
+    #   return
 
   print("Done. Exec time(s): ", time.time() - start_time)
 
 if __name__ == "__main__":
 
-  parser = argparse.ArgumentParser(description="static sequential (population) microsimulation")
-
-  parser.add_argument("region", type=str, help="the ONS code of the local authority district (LAD) to be covered by the microsynthesis, e.g. E09000001")
-  # currently assuming OA11 resolution for households and MSOA for people
-  parser.add_argument("year", type=int, help="the reference (i.e. census) year for the microsimulation (either 2001 or 2011)")
-  parser.add_argument("-s", "--strict", action='store_const', const=True, default=False, help="fail if cannot exactly sample required number of people")
-  
-  args = parser.parse_args()
-
-  main(args)
+  params = utils.get_config() 
+  main(params)

@@ -13,7 +13,7 @@ class Assignment:
   # Treat under 18s as dependent children
   ADULT_AGE = 16
 
-  def __init__(self, region, year, strictmode, data_dir):
+  def __init__(self, region, h_resolution, p_resolution, year, variant, strictmode, data_dir):
 
     #Common.Base.__init__(self, region, resolution, cache_dir)
     self.region = region
@@ -22,8 +22,8 @@ class Assignment:
     # write pop back to
     self.output_dir = data_dir
 
-    h_file = data_dir + "/ssm_hh_" + region + "_OA11_" + str(year) + ".csv"
-    p_file = data_dir + "/ssm_" + region + "_MSOA11_" + str(year) + ".csv"
+    h_file = data_dir + "/ssm_hh_" + region + "_" + h_resolution + "_" + str(year) + ".csv"
+    p_file = data_dir + "/ssm_" + region + "_" + p_resolution + "_" + variant + "_" + str(year) + ".csv"
 
     if not os.path.isfile(h_file):
       raise RuntimeError("household input data not found")
@@ -65,9 +65,9 @@ class Assignment:
     self.hrp_index["mix"] = [5]
     
     # distribution of partner age/sex/eth by HRP age/sex/eth
-    self.partner_hrp_dist = pd.read_csv("./data/partner_hrp_dist.csv")
+    self.partner_hrp_dist = pd.read_csv("./persistent_data/partner_hrp_dist.csv")
     # distribution of child age/sex/eth by HRP age/sex/eth
-    self.child_hrp_dist = pd.read_csv("./data/child_hrp_dist.csv")
+    self.child_hrp_dist = pd.read_csv("./persistent_data/child_hrp_dist.csv")
 
     # make it deterministic
     np.random.seed(12345)
