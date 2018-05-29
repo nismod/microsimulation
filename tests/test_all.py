@@ -1,7 +1,10 @@
+""" 
+Test harness
+"""
 from unittest import TestCase
 
 #import ukcensusapi.Nomisweb as Api
-import microsimulation.common as Common
+#import microsimulation.common as Common
 import microsimulation.static as Static
 import microsimulation.static_h as StaticH
 import microsimulation.dynamic as Dynamic

@@ -61,7 +61,7 @@ def remap(indices, mapping):
   return values
 
 
-def adjust_mye_age(mye, decrement=100):
+def adjust_mye_age(mye):
   """
   Makes mid-year estimate/snpp data conform with census age categories:
   - subtract 100 from age (so that "1" means under 1)
@@ -72,18 +72,19 @@ def adjust_mye_age(mye, decrement=100):
   pop_m = mye[mye.GENDER == 1].OBS_VALUE.sum()
   pop_a = mye[mye.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
 
-  mye.C_AGE -= decrement
+  mye.C_AGE -= 100
 
   mye_adj = mye[mye.C_AGE < 86].copy()
   mye_over85 = mye[mye.C_AGE > 85].copy()
 
   #print(myeOver85.head(12))
 
-  agg85 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER"], values="OBS_VALUE", aggfunc=sum)
-  agg85["C_AGE"] = 86
-  agg85 = agg85.reset_index()
+  agg86 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER"], values="OBS_VALUE", aggfunc=sum)
+  agg86["C_AGE"] = 86
+  agg86 = agg86.reset_index()
+  agg86.to_csv("wtf.csv")
 
-  mye_adj = mye_adj.append(agg85)
+  mye_adj = mye_adj.append(agg86, ignore_index=True)
 
   # ensure the totals in the adjusted table match the originals (within precision)
   assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
@@ -91,6 +92,39 @@ def adjust_mye_age(mye, decrement=100):
   assert relEqual(mye_adj[mye_adj.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum(), pop_a)
 
   return mye_adj
+
+
+def adjust_pp_age(pp):
+  """
+  Makes (s)npp data conform with census age categories:
+  - subtract 100 from age (so that "1" means under 1)
+  - aggregate 86,87,88,89,90,91 into 86 (meaning 85+)
+  """
+  # keep track of some totals
+  pop = pp.OBS_VALUE.sum()
+  pop_m = pp[pp.GENDER == 1].OBS_VALUE.sum()
+  pop_a = pp[pp.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
+
+  pp.C_AGE += 1
+
+  mye_adj = pp[pp.C_AGE < 86].copy()
+  mye_over85 = pp[pp.C_AGE > 85].copy()
+
+  #print(myeOver85.head(12))
+
+  agg86 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER", "PROJECTED_YEAR_NAME"], values="OBS_VALUE", aggfunc=sum)
+  agg86["C_AGE"] = 86
+  agg86 = agg86.reset_index()
+
+  mye_adj = mye_adj.append(agg86, ignore_index=True)
+
+  # ensure the totals in the adjusted table match the originals (within precision)
+  assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
+  assert relEqual(mye_adj[mye_adj.GENDER == 1].OBS_VALUE.sum(), pop_m)
+  assert relEqual(mye_adj[mye_adj.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum(), pop_a)
+
+  return mye_adj
+
 
 def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   """

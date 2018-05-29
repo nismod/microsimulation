@@ -64,8 +64,8 @@ class SequentialMicrosynthesis(Common.Base):
       raise ValueError("2001 is the earliest supported target year")
 
     # TODO extend to NPP 
-    if target_year > self.snpp_api.max_year():
-      raise ValueError(str(self.snpp_api.max_year()) + " is the current latest supported end year")
+    if target_year > self.npp_api.max_year():
+      raise ValueError(str(self.npp_api.max_year()) + " is the current latest supported end year")
 
     if self.fast_mode:
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
@@ -102,8 +102,10 @@ class SequentialMicrosynthesis(Common.Base):
 
     if year < self.snpp_api.min_year():
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
-    else:
+    elif year <= self.snpp_api.max_year():
       age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)
+    else:
+      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.extrapolate(self.npp_api, self.region, year)), self.region)
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
@@ -119,8 +121,9 @@ class SequentialMicrosynthesis(Common.Base):
     else:
       msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
     if not msynth["conv"]:
+      print(msynth)
       raise RuntimeError("msynth did not converge")
-
+    print(msynth["pop"])
     if self.fast_mode:
       print("updating seed to", year, " ", end="")
       self.seed = msynth["result"]
@@ -248,8 +251,8 @@ class SequentialMicrosynthesis(Common.Base):
     """
     # get all the data
     # ages have 1 added then collapsed to 85+ for census consistency
-    self.snpp_api.data.to_csv("snpp.csv", index=False)
-    self.snpp = Utils.adjust_mye_age(self.snpp_api.data, decrement=-1)
+    #self.snpp_api.data.to_csv("snpp.csv", index=False)
+    self.snpp = Utils.adjust_pp_age(self.snpp_api.data)
 
   def __get_npp_principal_data(self):
     """ 
@@ -258,5 +261,5 @@ class SequentialMicrosynthesis(Common.Base):
     self.npp = self.npp_api.detail("ppp", self.npp_api.UK) # years=range(2016,2117)
     # ages have 1 added then collapsed to 85+ for census consistency
     # TODO better to use actual ages...
-    self.npp = Utils.adjust_mye_age(self.npp, decrement=-1) 
+    self.npp = Utils.adjust_pp_age(self.npp) 
 

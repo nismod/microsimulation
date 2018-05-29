@@ -30,17 +30,17 @@ def main(params):
     print("Static P Microsimulation: ", region, "@", resolution)
 
     # init microsynthesis
-    try:
-      ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
-      ssm.run(ref_year, horizon_year)
-    except Exception as e:
-      print(e)
-      return
+    #try:
+    ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
+    ssm.run(ref_year, horizon_year)
+    #except Exception as e:
+    #  print(e)
+    #  return
 
     print(region, "done. Exec time(s): ", time.time() - start_time)
   print("all done")
 
 if __name__ == "__main__":
 
-  params = utils.get_config()
-  main(params)
+  PARAMS = utils.get_config()
+  main(PARAMS)
