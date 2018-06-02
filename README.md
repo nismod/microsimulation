@@ -62,13 +62,24 @@ NB Ensure you install humanleague version 2 or higher - this package uses featur
 ./setup.py test
 ```
 ### Running a static population microsimulation
-```
-scripts/run_ssm.py config-file
+```bash
+$ scripts/run_ssm.py --help
+usage: run_ssm.py [-h] [-c config-file] LAD [LAD ...]
+
+static sequential (population/household) microsimulation
+
+positional arguments:
+  LAD                   ONS code for LAD (multiple LADs can be set).
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c config-file, --config config-file
+                        the model configuration file (json). See
+                        config/*_example.json
 ```
 where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subdirectory of this package.
 ```json
 {
-  "regions": ["E09000001"],
   "resolution": "MSOA11",
   "projection": "ppp",
   "census_ref_year": 2011,
@@ -81,12 +92,25 @@ where config-file is a JSON file containing the model parameters and settings. E
 ```
 ### Running a household microsimulation
 ```
-scripts/run_ssm_h.py config-file
-```
+$ scripts/run_ssm_h.py --help
+usage: run_ssm_h.py [-h] [-c config-file] LAD [LAD ...]
+
+static sequential (population/household) microsimulation
+
+positional arguments:
+  LAD                   ONS code for LAD (multiple LADs can be set).
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c config-file, --config config-file
+                        the model configuration file (json). See
+                        config/*_example.json`
+```                        
+                        
+                     
 where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subdirectory of this package.
 ```json
 {
-  "regions": ["E09000001"],
   "resolution": "OA11",
   "projection": "ppp",
   "census_ref_year": 2011,
@@ -105,3 +129,7 @@ where config-file is a JSON file containing the model parameters and settings. E
 scripts/run_microsynth.py E09000001 MSOA11 2001 2039
 ```
 NB Runtime for a medium-sized local authority for all 39 years is likely to be well over 24h.
+
+### Running the assignment (people->households) algorithm
+TODO
+
