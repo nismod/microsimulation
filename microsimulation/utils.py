@@ -72,6 +72,7 @@ def adjust_mye_age(mye):
   pop_m = mye[mye.GENDER == 1].OBS_VALUE.sum()
   pop_a = mye[mye.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
 
+  # this modifies argument!
   mye.C_AGE -= 100
 
   mye_adj = mye[mye.C_AGE < 86].copy()
@@ -96,24 +97,23 @@ def adjust_mye_age(mye):
 
 def adjust_pp_age(pp):
   """
-  Makes (s)npp data conform with census age categories:
-  - subtract 100 from age (so that "1" means under 1)
-  - aggregate 86,87,88,89,90,91 into 86 (meaning 85+)
+  Makes (s)npp data conform with census maximum categories:
+  - aggregate 85,86,87,88,89,90 into 85 (meaning >=85)
   """
   # keep track of some totals
   pop = pp.OBS_VALUE.sum()
   pop_m = pp[pp.GENDER == 1].OBS_VALUE.sum()
   pop_a = pp[pp.GEOGRAPHY_CODE == "E06000015"].OBS_VALUE.sum()
 
-  pp.C_AGE += 1
+  #pp.C_AGE += 1
 
-  mye_adj = pp[pp.C_AGE < 86].copy()
-  mye_over85 = pp[pp.C_AGE > 85].copy()
+  mye_adj = pp[pp.C_AGE < 85].copy()
+  mye_over85 = pp[pp.C_AGE > 84].copy()
 
   #print(myeOver85.head(12))
 
   agg86 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER", "PROJECTED_YEAR_NAME"], values="OBS_VALUE", aggfunc=sum)
-  agg86["C_AGE"] = 86
+  agg86["C_AGE"] = 85
   agg86 = agg86.reset_index()
 
   mye_adj = mye_adj.append(agg86, ignore_index=True)

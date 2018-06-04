@@ -103,10 +103,10 @@ class SequentialMicrosynthesis(Common.Base):
     if year < self.snpp_api.min_year():
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
     elif year <= self.snpp_api.max_year():
-      print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
-      print(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year].head())
-      age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)
-      #age_sex = Utils.create_age_sex_marginal(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year))
+      #print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
+      #print(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year].head())
+      #age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)
+      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
       age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.extrapolate(self.npp_api, self.region, year)), self.region)
 
