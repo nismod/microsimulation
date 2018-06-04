@@ -57,6 +57,8 @@ pip3 install git+git://github.com/virgesmith/humanleague.git
 NB Ensure you install humanleague version 2 or higher - this package uses features that are not available in earlier versions.
 
 ### Installation and Testing
+The UKCensusAPI package requires an API key to function correctly, see [here](http://github.com/virgesmith/UKCensusAPI/README.md) for details 
+
 ```
 ./setup.py install
 ./setup.py test
