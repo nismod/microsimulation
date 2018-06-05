@@ -1,6 +1,6 @@
 {
   "resolution": "MSOA11",
-  "projection": "ppp",
+  "projection": "hhh",
   "census_ref_year": 2011,
   "projection_ref_year": 2014,
   "horizon_year": 2050,

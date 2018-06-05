@@ -32,13 +32,8 @@ class SequentialMicrosynthesis(Common.Base):
     self.snpp_api = snppdata.SNPPData(cache_dir)
 
     # (down)load the mid-year estimates
+    # TODO once ukpopulation supports MYE, remove this
     self.__get_mye_data()
-
-    # load the subnational population projections
-    self.__get_snpp_data()
-
-    # load the national (principal) population projections
-    self.__get_npp_principal_data()
 
     # validation
     if not self.variant in nppdata.NPPData.VARIANTS:
@@ -102,13 +97,12 @@ class SequentialMicrosynthesis(Common.Base):
 
     if year < self.snpp_api.min_year():
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
-    elif year <= self.snpp_api.max_year():
+    elif year <= self.npp_api.max_year():
       #print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
       #print(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year].head())
-      #age_sex = Utils.create_age_sex_marginal(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year], self.region)
       age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
-      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.extrapolate(self.npp_api, self.region, year)), self.region)
+      raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
@@ -126,7 +120,7 @@ class SequentialMicrosynthesis(Common.Base):
     if not msynth["conv"]:
       print(msynth)
       raise RuntimeError("msynth did not converge")
-    print(msynth["pop"])
+    #print(msynth["pop"])
     if self.fast_mode:
       print("updating seed to", year, " ", end="")
       self.seed = msynth["result"]
@@ -247,22 +241,4 @@ class SequentialMicrosynthesis(Common.Base):
     self.mye[2015] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
     query_params["date"] = "latest"
     self.mye[2016] = Utils.adjust_mye_age(self.data_api.get_data(table_internal, query_params))
-
-  def __get_snpp_data(self):
-    """
-    Uses the population module to retrieve the SNPP data projection for all UK LAD/LAD-equvialents
-    """
-    # get all the data
-    # ages have 1 added then collapsed to 85+ for census consistency
-    #self.snpp_api.data.to_csv("snpp.csv", index=False)
-    self.snpp = Utils.adjust_pp_age(self.snpp_api.data)
-
-  def __get_npp_principal_data(self):
-    """ 
-    Uses the population module to retrieve the NPP principal projection for all UK countries (E, W, S, NI)
-    """
-    self.npp = self.npp_api.detail("ppp", self.npp_api.UK) # years=range(2016,2117)
-    # ages have 1 added then collapsed to 85+ for census consistency
-    # TODO better to use actual ages...
-    self.npp = Utils.adjust_pp_age(self.npp) 
 
