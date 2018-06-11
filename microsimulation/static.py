@@ -58,7 +58,6 @@ class SequentialMicrosynthesis(Common.Base):
     if target_year < 2001:
       raise ValueError("2001 is the earliest supported target year")
 
-    # TODO extend to NPP 
     if target_year > self.npp_api.max_year():
       raise ValueError(str(self.npp_api.max_year()) + " is the current latest supported end year")
 
@@ -72,9 +71,9 @@ class SequentialMicrosynthesis(Common.Base):
       # TODO make them consistent?
       # With dynamic update of seed for now just recompute even if file exists
       #if not os.path.isfile(out_file):
-      if year < self.snpp_api.min_year():
+      if year < self.snpp_api.min_year(self.region):
         source = " [MYE]"
-      elif year <= self.snpp_api.max_year():  
+      elif year <= self.snpp_api.max_year(self.region):  
         source = " [SNPP]"
       else:
         source = " [XNPP]"
@@ -95,7 +94,7 @@ class SequentialMicrosynthesis(Common.Base):
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
-    if year < self.snpp_api.min_year():
+    if year < self.snpp_api.min_year(self.region):
       age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
     elif year <= self.npp_api.max_year():
       #print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
