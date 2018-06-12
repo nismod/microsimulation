@@ -28,15 +28,15 @@ class Base(object):
 
   def __get_census_data_sc(self):
 
-    raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
-
     # disaggregate LAD-level data?
-    dc1117sc = self.data_api_sc.get_data("DC1117SC", "LAD", self.region)
+    # age only, no gender
+    dc1117sc = self.data_api_sc.get_data("QS103SC", "MSOA11", self.region, category_filters={"QS103SC_0_CODE": range(1,102)})
     print(dc1117sc.head())
-    dc2101sc = self.data_api_sc.get_data("DC2101SC", "LAD", self.region)
+    # ethnicity
+    dc2101sc = self.data_api_sc.get_data("KS201SC", "MSOA11", self.region, category_filters={"KS201SC_0_CODE": [1,8,9,15,18,22]})
     print(dc2101sc.head())
     # dc6206sc = self.data_api_sc.get_data("DC6206SC", "MSOA11", self.region)
-    # print(dc6206sc.head())
+    raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
     
     return (dc1117sc, dc2101sc, None)
 
