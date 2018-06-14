@@ -5,6 +5,7 @@ utility functions
 import argparse
 import json
 import numpy as np
+import pandas as pd
 import humanleague as hl
 
 def get_config():
@@ -60,6 +61,29 @@ def remap(indices, mapping):
     values.append(mapping[indices[i]])
   return values
 
+def check_and_invert(columns, excluded):
+  """
+  Returns the subset of column names that is not in excluded
+  """
+  if isinstance(excluded, str):
+    excluded = [excluded]
+
+  included = columns.tolist()
+  for exclude in excluded:
+    if exclude in included:
+      included.remove(exclude)
+  return included
+
+# TODO there is a lot of commonality in the 3 functions below
+def cap_value(table, colname, maxval, sumcolname):
+  """
+  Aggregates values in column colname 
+  """
+  table_under = table[table[colname] < maxval].copy()
+  table_over = table[table[colname] >= maxval].copy().groupby(check_and_invert(table.columns.values, [colname, sumcolname]))[sumcolname].sum().reset_index()
+  table_over[colname] = maxval
+
+  return table_under.append(table_over)
 
 def adjust_mye_age(mye):
   """
@@ -83,7 +107,6 @@ def adjust_mye_age(mye):
   agg86 = mye_over85.pivot_table(index=["GEOGRAPHY_CODE", "GENDER"], values="OBS_VALUE", aggfunc=sum)
   agg86["C_AGE"] = 86
   agg86 = agg86.reset_index()
-  agg86.to_csv("wtf.csv")
 
   mye_adj = mye_adj.append(agg86, ignore_index=True)
 
@@ -125,16 +148,24 @@ def adjust_pp_age(pp):
 
   return mye_adj
 
+def check_result(msynth):
+  if isinstance(msynth, str):
+    raise ValueError(msynth)
+  elif not msynth["conv"]:
+    print(msynth)
+    raise ValueError("convergence failure")
+
 
 def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   """
   Microsynthesise a seed population from census data
   """
   n_geog = len(dc1117ew.GEOGRAPHY_CODE.unique())
-  n_sex = len(dc1117ew.C_SEX.unique())
+  n_sex = 2 #len(dc1117ew.C_SEX.unique())
   n_age = len(dc1117ew.C_AGE.unique())
+  print(dc1117ew.head())
   cen11sa = unlistify(dc1117ew, ["GEOGRAPHY_CODE", "C_SEX", "C_AGE"], [n_geog, n_sex, n_age], "OBS_VALUE")
-
+  print(cen11sa.sum())
   n_eth = len(dc2101ew.C_ETHPUK11.unique())
   cen11se = unlistify(dc2101ew, ["GEOGRAPHY_CODE", "C_SEX", "C_ETHPUK11"], [n_geog, n_sex, n_eth], "OBS_VALUE")
 
@@ -143,8 +174,10 @@ def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
 
   # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
   print("Synthesising 2011 seed population...", end='')
+  print(cen11sa.sum())
+  print(cen11se.sum())  
   msynth = hl.qis([np.array([0, 1, 2]), np.array([0, 1, 3])], [cen11sa, cen11se])
-  assert msynth["conv"]
+  check_result(msynth)
   print("OK")
   return msynth["result"]
 
