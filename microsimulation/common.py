@@ -6,6 +6,21 @@ import pandas as pd
 
 import ukcensusapi.Nomisweb as Api_ew
 import ukcensusapi.NRScotland as Api_sc
+import microsimulation.utils as utils
+
+# hack to add gender where Scottish table is not available (pending response from NRScotland)
+def _hack_gender(table):
+  # hack gender in (TODO microsynthesise from seed?)
+  new = table.copy()
+  new.OBS_VALUE = (table.OBS_VALUE/2).round().astype(int)
+  new["C_SEX"] = 1 
+  new_f = table.copy()
+  new_f.OBS_VALUE = table.OBS_VALUE - new.OBS_VALUE
+  new_f["C_SEX"] = 1
+  new = new.append(new_f)
+  assert(table.OBS_VALUE.sum() == new.OBS_VALUE.sum())
+  print(new[new.C_SEX==1].OBS_VALUE.sum(), new[new.C_SEX==2].OBS_VALUE.sum())
+  return new.reset_index(drop=True)
 
 class Base(object):
   """
@@ -22,7 +37,7 @@ class Base(object):
     if self.region[0] == "S":
       return self.__get_census_data_sc()
     elif self.region[0] == "N":
-      raise("NI support not yet implemented")
+      raise NotImplementedError("NI support not yet implemented")
     else:
       return self.__get_census_data_ew()
 
@@ -30,14 +45,24 @@ class Base(object):
 
     # disaggregate LAD-level data?
     # age only, no gender
-    dc1117sc = self.data_api_sc.get_data("QS103SC", "MSOA11", self.region, category_filters={"QS103SC_0_CODE": range(1,102)})
-    print(dc1117sc.head())
+    qs103sc = self.data_api_sc.get_data("QS103SC", "MSOA11", self.region, category_filters={"QS103SC_0_CODE": range(1,102)})
+
+    dc1117sc = _hack_gender(qs103sc)
+    dc1117sc.rename(columns={"QS103SC_0_CODE": "C_AGE"}, inplace=True)
+    dc1117sc = utils.cap_value(dc1117sc, "C_AGE", 86, "OBS_VALUE")
+
     # ethnicity
-    dc2101sc = self.data_api_sc.get_data("KS201SC", "MSOA11", self.region, category_filters={"KS201SC_0_CODE": [1,8,9,15,18,22]})
-    print(dc2101sc.head())
+    dc2101sc = _hack_gender(self.data_api_sc.get_data("KS201SC", "MSOA11", self.region, category_filters={"KS201SC_0_CODE": [1,8,9,15,18,22]}))
+    dc2101sc.rename(columns={"KS201SC_0_CODE": "C_ETHPUK11"}, inplace=True)
+    
+    print(dc1117sc.OBS_VALUE.sum(), dc2101sc.OBS_VALUE.sum())
+
+    assert(dc1117sc.OBS_VALUE.sum() == dc2101sc.OBS_VALUE.sum())
     # dc6206sc = self.data_api_sc.get_data("DC6206SC", "MSOA11", self.region)
     raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
-    
+
+#    print(dc1117sc.C_AGE.unique())
+
     return (dc1117sc, dc2101sc, None)
 
   def __get_census_data_ew(self):
@@ -107,8 +132,6 @@ class Base(object):
     adults_table = adults_table.rename(columns={"C_AGE": "C_AGEBAND"})
 
     x = pd.concat([adults_table, children_table], axis=0, ignore_index=True)
-    x.to_csv("adj.csv")
     assert full_table.OBS_VALUE.sum() == x.OBS_VALUE.sum()
     return x
-
 
