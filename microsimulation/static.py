@@ -80,11 +80,6 @@ class SequentialMicrosynthesis(Common.Base):
       msynth = self.__microsynthesise(year)
       print("OK")
       msynth.to_csv(out_file, index_label="PID")
-      # else:
-      #   print("Already exists:", out_file)
-      #   if year > 2011:
-      #     # TODO load file, pivot and use as seed
-      #     print("Warning: not using latest population as seed")
 
   def __microsynthesise(self, year): #LAD=self.region
 

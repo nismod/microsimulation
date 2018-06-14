@@ -3,23 +3,33 @@ Microsimulation base class - common functionality
 """
 
 import pandas as pd
+import numpy as np
 
 import ukcensusapi.Nomisweb as Api_ew
 import ukcensusapi.NRScotland as Api_sc
+import humanleague as hl
 import microsimulation.utils as utils
+
 
 # hack to add gender where Scottish table is not available (pending response from NRScotland)
 def _hack_gender(table):
   # hack gender in (TODO microsynthesise from seed?)
+  sex = hl.prob2IntFreq(np.array([0.5, 0.5]), table.OBS_VALUE.sum())
+
+  print(sex)
+  print(len(table))
+  print(table.head())
+
   new = table.copy()
   new.OBS_VALUE = (table.OBS_VALUE/2).round().astype(int)
   new["C_SEX"] = 1 
   new_f = table.copy()
   new_f.OBS_VALUE = table.OBS_VALUE - new.OBS_VALUE
-  new_f["C_SEX"] = 1
-  new = new.append(new_f)
+  new_f["C_SEX"] = 2
+  new = new.append(new_f).reset_index(drop=True)
   assert(table.OBS_VALUE.sum() == new.OBS_VALUE.sum())
-  print(new[new.C_SEX==1].OBS_VALUE.sum(), new[new.C_SEX==2].OBS_VALUE.sum())
+#  print(new.iloc[0])
+  #print(new[new.C_SEX==1].OBS_VALUE.sum(), new[new.C_SEX==2].OBS_VALUE.sum())
   return new.reset_index(drop=True)
 
 class Base(object):
@@ -59,7 +69,7 @@ class Base(object):
 
     assert(dc1117sc.OBS_VALUE.sum() == dc2101sc.OBS_VALUE.sum())
     # dc6206sc = self.data_api_sc.get_data("DC6206SC", "MSOA11", self.region)
-    raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
+    #raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
 
 #    print(dc1117sc.C_AGE.unique())
 
