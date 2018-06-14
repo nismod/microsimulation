@@ -8,6 +8,7 @@ import pandas as pd
 import humanleague as hl
 import ukpopulation.nppdata as nppdata
 import ukpopulation.snppdata as snppdata
+import ukpopulation.myedata as myedata
 import microsimulation.utils as Utils
 import microsimulation.common as Common
 
@@ -28,12 +29,9 @@ class SequentialMicrosynthesis(Common.Base):
     self.variant = variant
 
     # init the population (projections) modules
+    self.mye_api = myedata.MYEData(cache_dir)
     self.npp_api = nppdata.NPPData(cache_dir)
     self.snpp_api = snppdata.SNPPData(cache_dir)
-
-    # (down)load the mid-year estimates
-    # TODO once ukpopulation supports MYE, remove this
-    self.__get_mye_data()
 
     # validation
     if not self.variant in nppdata.NPPData.VARIANTS:
@@ -95,7 +93,7 @@ class SequentialMicrosynthesis(Common.Base):
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
     if year < self.snpp_api.min_year(self.region):
-      age_sex = Utils.create_age_sex_marginal(self.mye[year], self.region)
+      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.mye_api.filter(year, self.region)), self.region)
     elif year <= self.npp_api.max_year():
       #print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
       #print(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year].head())
@@ -191,53 +189,53 @@ class SequentialMicrosynthesis(Common.Base):
     # seed defaults to census 11 data, updates as simulate past 2011
     self.seed = self.cen11.astype(float)
 
-  def __get_mye_data(self):
-    """
-    Gets Mid-year population estimate data for 2001-2016
-    Single year of age by gender by geography, at Local Authority scale
-    """
-    table_internal = "NM_2002_1" # 2016-based MYE
-    query_params = {
-      "gender": "1,2",
-      "c_age": "101...191",
-      "MEASURES": "20100",
-      "select": "geography_code,gender,c_age,obs_value",
-      "geography": "1879048193...1879048573,1879048583,1879048574...1879048582"
-    }
+  # def __get_mye_data(self):
+  #   """
+  #   Gets Mid-year population estimate data for 2001-2016
+  #   Single year of age by gender by geography, at Local Authority scale
+  #   """
+  #   table_internal = "NM_2002_1" # 2016-based MYE
+  #   query_params = {
+  #     "gender": "1,2",
+  #     "c_age": "101...191",
+  #     "MEASURES": "20100",
+  #     "select": "geography_code,gender,c_age,obs_value",
+  #     "geography": "1879048193...1879048573,1879048583,1879048574...1879048582"
+  #   }
 
-    # store as a dictionary keyed by year
-    self.mye = {}
+  #   # store as a dictionary keyed by year
+  #   self.mye = {}
 
-    query_params["date"] = "latestMINUS15"
-    self.mye[2001] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS14"
-    self.mye[2002] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS13"
-    self.mye[2003] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS12"
-    self.mye[2004] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS11"
-    self.mye[2005] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS10"
-    self.mye[2006] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS9"
-    self.mye[2007] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS8"
-    self.mye[2008] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS7"
-    self.mye[2009] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS6"
-    self.mye[2010] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS5"
-    self.mye[2011] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS4"
-    self.mye[2012] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS3"
-    self.mye[2013] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS2"
-    self.mye[2014] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latestMINUS1"
-    self.mye[2015] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
-    query_params["date"] = "latest"
-    self.mye[2016] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS15"
+  #   self.mye[2001] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS14"
+  #   self.mye[2002] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS13"
+  #   self.mye[2003] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS12"
+  #   self.mye[2004] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS11"
+  #   self.mye[2005] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS10"
+  #   self.mye[2006] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS9"
+  #   self.mye[2007] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS8"
+  #   self.mye[2008] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS7"
+  #   self.mye[2009] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS6"
+  #   self.mye[2010] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS5"
+  #   self.mye[2011] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS4"
+  #   self.mye[2012] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS3"
+  #   self.mye[2013] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS2"
+  #   self.mye[2014] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latestMINUS1"
+  #   self.mye[2015] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
+  #   query_params["date"] = "latest"
+  #   self.mye[2016] = Utils.adjust_mye_age(self.data_api_en.get_data(table_internal, query_params))
 
