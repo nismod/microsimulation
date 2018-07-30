@@ -90,9 +90,11 @@ class SequentialMicrosynthesis(Common.Base):
     if year < self.snpp_api.min_year(self.region):
       age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.mye_api.filter(year, self.region)), self.region)
     elif year <= self.npp_api.max_year():
-      #print(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year).head())
-      #print(self.snpp[self.snpp.PROJECTED_YEAR_NAME == year].head())
-      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
+      # Don't attempt to apply NPP variant if before the start of the NPP data
+      if year < self.npp_api.min_year():
+        age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
+      else:
+        age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
