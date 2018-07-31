@@ -44,7 +44,7 @@ qsub_params="-l h_rt=2:0:0"
 for region in $regions; do
   export REGION=$region
   echo Submitting job for $REGION
-  qsub -o ./logs -e ./logs $qsub_params run.sh
+  qsub -o ./logs -e ./logs $qsub_params arun.sh
   sleep 3
 done
 

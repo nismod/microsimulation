@@ -22,5 +22,5 @@ qsub_params="-l h_rt=2:0:0"
 
 export REGION=$region
 echo Submitting job for $REGION
-qsub -o ./logs -e ./logs $qsub_params run.sh
+qsub -o ./logs -e ./logs $qsub_params arun.sh
 
