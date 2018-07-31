@@ -34,31 +34,38 @@ Based on provided fertility, mortality and migration data and guided by static m
 
 ## Setup
 
+Clone the repo:
+
+```bash
+$ git clone https://github.com/nismod/microsimulation
+```
+
 ### Dependencies
 
-- `python3`
-
-The following packages are specified in `requirements.txt` and should be automatically installed, manual steps are shown below just in case. 
+Requires python 3. The following packages are dependencies, and will need to be installed if not already:
 
 - [UKCensusAPI](https://github.com/virgesmith/UKCensusAPI): wrapper around the nomisweb API for census data
-```
-pip3 install git+git://github.com/virgesmith/UKCensusAPI.git
-```
-
-- [population](https://github.com/nismod/population): wrapper around national and subnational population projection data
-```
-pip3 install git+git://github.com/nismod/population.git
-```
-
+- [ukpopulation](https://github.com/nismod/ukpopulation): wrapper around national and subnational population projection data
 - [humanleague](https://github.com/virgesmith/humanleague): microsynthesis package
+
+#### Pip Install
+
+```bash
+$ python3 -m pip install humanleague ukpopulation ukcensusapi
 ```
-pip3 install git+git://github.com/virgesmith/humanleague.git
+
+#### Conda Install
+(YMMV - only ukcensusapi is currently available via conda-forge)
+
+```bash
+$ conda config --add channels conda-forge # if you haven't already
+$ conda install ukcensusapi
 ```
-NB Ensure you install humanleague version 2 or higher - this package uses features that are not available in earlier versions.
 
 ### Installation and Testing
-The UKCensusAPI package requires an API key to function correctly, see [here](http://github.com/virgesmith/UKCensusAPI/README.md) for details 
+The ukcensusapi package requires an API key to function correctly, see [here](http://github.com/virgesmith/UKCensusAPI/README.md) for details 
 
+From the root directory of the cloned, repo:
 ```
 ./setup.py install
 ./setup.py test
@@ -85,7 +92,6 @@ where config-file is a JSON file containing the model parameters and settings. E
   "resolution": "MSOA11",
   "projection": "ppp",
   "census_ref_year": 2011,
-  "projection_ref_year": 2014,
   "horizon_year": 2039,
   "mode": "fast",
   "cache_dir": "./cache",
