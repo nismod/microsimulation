@@ -78,8 +78,10 @@ class SequentialMicrosynthesisH:
       # 1-dissolution_rate applied to existing population
       persisting = int(len(population) * (1.0 - dissolution_rate))
       sample = population.sample(n=persisting, replace=False)
-      newlyformed = population.sample(n=pop-persisting, replace=False)
-      sample = sample.append(newlyformed, ignore_index=True)
+      # TODO how to deal with housing shrinkage?
+      if pop > persisting:
+        newlyformed = population.sample(n=pop-persisting, replace=False)
+        sample = sample.append(newlyformed, ignore_index=True)
       # append with ignore_index means steps below not necessary
       # drop the old index column (which is no longer the index)
       #sample = sample.reset_index().drop(columns=['HID']) # ,'index'
