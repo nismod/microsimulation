@@ -91,6 +91,9 @@ class Assignment:
     for msoa in msoas:
       oas = self.geog_lookup[self.geog_lookup.msoa == msoa].oa.values
 
+      if not len(oas):
+        raise ValueError("no OA11 codes found for MSOA {}, lookup table likely incomplete".format(msoa))
+
       print(msoa + ":", oas)
 
       # LC4408_C_AHTHUK11
@@ -357,7 +360,13 @@ class Assignment:
       if len(dist) == 0:
         print("child-HRP not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without eth constraint")
         dist = self.child_hrp_dist.loc[self.child_hrp_dist.agehrp == hrp_age]
-        
+        if len(dist) == 0:
+          print("child-HRP *still* not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling with eth but without age constraint")
+          dist = self.child_hrp_dist.loc[self.child_hrp_dist.ethhuk11 == hrp_eth]
+          if len(dist) == 0:
+            print("child-HRP *STILL* not sampled:", idx, hrp_age, hrp_sex, hrp_eth, "resampling without eth or age constraint")
+            dist = self.child_hrp_dist
+
       child_sample = dist.sample(1, weights=dist.n).index.values[0]
 
       age = self.child_hrp_dist.loc[child_sample, "age"]
@@ -571,6 +580,7 @@ class Assignment:
       h_sample = np.random.choice(h_candidates, n_p, replace=True)
 
       self.p_data.loc[p_unassigned, "HID"] = h_sample
+
 
   def __assign_surplus_children(self, msoa, oas):
     # assign remaining children after minimal assignment to any household other than single
