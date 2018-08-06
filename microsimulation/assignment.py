@@ -567,10 +567,10 @@ class Assignment:
     n_p = len(p_unassigned)
 
     h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11 == 5) & (self.h_data.FILLED == False)].index
+    if len(h_candidates) > 0:
+      h_sample = np.random.choice(h_candidates, n_p, replace=True)
 
-    h_sample = np.random.choice(h_candidates, n_p, replace=True)
-
-    self.p_data.loc[p_unassigned, "HID"] = h_sample
+      self.p_data.loc[p_unassigned, "HID"] = h_sample
 
   def __assign_surplus_children(self, msoa, oas):
     # assign remaining children after minimal assignment to any household other than single

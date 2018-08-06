@@ -18,7 +18,7 @@ fi
 
 # TODO check conda
 
-qsub_params="-l h_rt=2:0:0"
+qsub_params="-l h_rt=24:0:0"
 
 export REGION=$region
 echo Submitting job for $REGION

@@ -38,13 +38,17 @@ W06000004 W06000005 W06000006 W06000008 W06000009 W06000010 W06000011 W06000012 
 W06000021 W06000022 W06000023 W06000024"
 
 
-# max run time (NB Birmingham takes longest at ~?h)
-qsub_params="-l h_rt=2:0:0"
+# max run time (NB Birmingham takes longest at ~41h)
+qsub_params="-l h_rt=24:0:0"
 
 for region in $regions; do
   export REGION=$region
-  echo Submitting job for $REGION
-  qsub -o ./logs -e ./logs $qsub_params arun.sh
-  sleep 3
+  if ls data/ass_hh_$REGION* 1>/dev/null 2>&1; then 
+    echo $REGION exists 
+  else 
+    echo Submitting job for $REGION
+    qsub -o ./logs -e ./logs $qsub_params arun.sh
+    sleep 3
+  fi
 done
 

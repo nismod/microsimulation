@@ -39,7 +39,7 @@ W06000021 W06000022 W06000023 W06000024"
 
 
 # max run time (NB Birmingham takes longest at ~?h)
-qsub_params="-l h_rt=2:0:0"
+qsub_params="-l h_rt=12:0:0"
 
 for region in $regions; do
   export REGION=$region
