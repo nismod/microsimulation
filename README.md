@@ -57,11 +57,11 @@ $ python3 -m pip install humanleague ukpopulation ukcensusapi
 ```
 
 #### Conda Install
-(YMMV - only ukcensusapi is currently available via conda-forge)
+(humanleague is not currently available via conda-forge, so should be installed with pip for now)
 
 ```bash
 $ conda config --add channels conda-forge # if you haven't already
-$ conda install ukcensusapi
+$ conda install ukcensusapi ukpopulation
 ```
 
 ### Installation and Testing
