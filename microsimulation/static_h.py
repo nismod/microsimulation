@@ -81,7 +81,7 @@ class SequentialMicrosynthesisH:
       # TODO how to deal with housing shrinkage?
       if pop > persisting:
         newlyformed = population.sample(n=pop-persisting, replace=False)
-        sample = sample.append(newlyformed, ignore_index=True, sort=False)
+        sample = sample.append(newlyformed, ignore_index=True)
       # append with ignore_index means steps below not necessary
       # drop the old index column (which is no longer the index)
       #sample = sample.reset_index().drop(columns=['HID']) # ,'index'

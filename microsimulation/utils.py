@@ -139,7 +139,7 @@ def adjust_pp_age(pp):
   agg86["C_AGE"] = 85
   agg86 = agg86.reset_index()
 
-  mye_adj = mye_adj.append(agg86, ignore_index=True, sort=True)
+  mye_adj = mye_adj.append(agg86, ignore_index=True)
 
   # ensure the totals in the adjusted table match the originals (within precision)
   assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
