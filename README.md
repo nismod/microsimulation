@@ -1,4 +1,6 @@
-*[work-in-progress]*
+[![DOI](https://zenodo.org/badge/113846360.svg)](https://zenodo.org/badge/latestdoi/113846360)
+
+**NB This package is a work-in-progress and subject to change, the documentation may not reflect the current code**
 
 # microsimulation
 Static and dynamic, population and household, microsimulation models. Take a base population and project it forward using various methodologies.
