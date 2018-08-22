@@ -15,8 +15,8 @@ logdir=./logs
 #$ -l h_vmem=2G
 #$ -m e
 #$ -M a.p.smith@leeds.ac.uk
-#$ -o logs
-#$ -e logs
+#$ -o ./logs
+#$ -e ./logs
 
 # Tell SGE that this is an array job, with "tasks" numbered from 1 to 35
 #$ -t 1-35
@@ -26,4 +26,4 @@ logdir=./logs
 # source the LAD arrays
 . ./lad_array.sh
 
-scripts/run_ssm_h.py -c config/ssm_h_default.py ${lads[$SGE_TASK_ID]}
+scripts/run_ssm_h.py -c config/ssm_h_default.json ${lads[$SGE_TASK_ID]}

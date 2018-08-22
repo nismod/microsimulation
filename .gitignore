@@ -106,3 +106,4 @@ cache/
 # HPC logs
 run.sh.o*
 run.sh.e*
+logs/

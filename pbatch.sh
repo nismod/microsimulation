@@ -7,8 +7,8 @@
 #$ -l h_vmem=2G
 #$ -m e
 #$ -M a.p.smith@leeds.ac.uk
-#$ -o logs/
-#$ -e logs/
+#$ -o ./logs
+#$ -e ./logs
 
 # Tell SGE that this is an array job, with "tasks" numbered from 0 to 34
 #$ -t 1-35
