@@ -3,7 +3,7 @@
 # This script must be run with qsub
 
 #$ -cwd -V
-#$ -l h_rt=01:00:00
+#$ -l h_rt=02:00:00
 #$ -l h_vmem=2G
 #$ -m e
 #$ -M a.p.smith@leeds.ac.uk
