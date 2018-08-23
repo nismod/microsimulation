@@ -23,7 +23,10 @@ logdir=./logs
 # Restrict to max jobs (35 is all of them) 
 #$ -tc 35
 
-# source the LAD arrays
-. ./lad_array.sh
+# check env is set up correctly
+. ./check.sh
+
+# source the LADs into groups of 10
+. ./lad_array_grouped10.sh
 
 scripts/run_ssm_h.py -c config/ssm_h_default.json ${lads[$SGE_TASK_ID]}
