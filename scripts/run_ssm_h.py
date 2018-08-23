@@ -24,20 +24,19 @@ def main(params):
   output_dir = params["output_dir"] if "output_dir" in params else DEFAULT_OUTPUT_DIR
 
   for region in params["regions"]:
-    # start timing
-    start_time = time.time()
+    try:
+      # start timing
+      start_time = time.time()
 
-    print("Static H Microsimulation ", region, "@", resolution)
-    # init microsynthesis
-    #try:
-    ssm = StaticH.SequentialMicrosynthesisH(region, resolution, upstream_dir, input_dir, output_dir)
-    # generate the population
-    ssm.run(ref_year, horizon_year)
-    #except Exception as e:
-    #  print("ERROR:", e)
-    #  return
+      print("Static H Microsimulation ", region, "@", resolution)
+      # init microsynthesis
+      ssm = StaticH.SequentialMicrosynthesisH(region, resolution, upstream_dir, input_dir, output_dir)
+      # generate the population
+      ssm.run(ref_year, horizon_year)
 
-    print("Done. Exec time(s): ", time.time() - start_time)
+      print("Done. Exec time(s): ", time.time() - start_time)
+    except RuntimeError as error: 
+      print(region, "FAILED: ", error)  
   print("All Done.")
 
 if __name__ == "__main__":

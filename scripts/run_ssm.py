@@ -24,20 +24,19 @@ def main(params):
   use_fast_mode = params["mode"] == "fast"
 
   for region in params["regions"]:
-    # start timing
-    start_time = time.time()
+    try:
+      # start timing
+      start_time = time.time()
 
-    print("Static P Microsimulation: ", region, "@", resolution)
+      print("Static P Microsimulation: ", region, "@", resolution)
 
-    # init microsynthesis
-    #try:
-    ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
-    ssm.run(ref_year, horizon_year)
-    #except Exception as e:
-    #  print(e)
-    #  return
+      # init microsynthesis
+      ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
+      ssm.run(ref_year, horizon_year)
 
-    print(region, "done. Exec time(s): ", time.time() - start_time)
+      print(region, "done. Exec time(s): ", time.time() - start_time)
+    except RuntimeError as error: 
+      print(region, "FAILED: ", error)
   print("all done")
 
 if __name__ == "__main__":
