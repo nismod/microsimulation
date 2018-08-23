@@ -1,13 +1,15 @@
-*[work-in-progress]*
+[![DOI](https://zenodo.org/badge/113846360.svg)](https://zenodo.org/badge/latestdoi/113846360)
+
+**NB This package is a work-in-progress and subject to change, the documentation may not reflect the current code**
 
 # microsimulation
 Static and dynamic, population and household, microsimulation models. Take a base population and project it forward using various methodologies.
 
 Current status:
 - [X] static population microsimulation: refinement/testing
-- [ ] dynamic population microsimulation: in prototype, reimplementation in progress
-- [X] quasi-dynamic househould microsimulation: basic model
-- [X] population-househould assignment algorithm : basic implementation
+- [ ] dynamic population microsimulation: in progress [here](https://github.com/virgesmith/neworder)
+- [X] quasi-dynamic household microsimulation: basic model
+- [X] population-househould assignment algorithm: basic implementation
 - [ ] coupled dynamic household-population microsimulation: drawing board
 
 ## Explanation of terms
@@ -15,7 +17,7 @@ Current status:
 - microsimulation: evolving a (microsynthesised) population forward in time
 - static: in this context, this means generating a synthetic population using estimated aggregate data, and a microsynthesis as a joint distribution
 - dynamic: in this context, this means evolving each entity as a dynamic progress, typically probabilistically. E.g. using Monte-Carlo and fertility/mortality/migration rates.
-- quasi-dynamic: in this context, a simplistic evolution whereby existing entities persist according to a survival probability and new entities are created to match a static estimate. 
+- quasi-dynamic: in this context, a simplistic evolution whereby existing entities persist according to a survival probability and new entities are created randomly to match a static estimate. 
 
 ## Introduction
 ### Static Microsimulation - Population
@@ -55,11 +57,11 @@ $ python3 -m pip install humanleague ukpopulation ukcensusapi
 ```
 
 #### Conda Install
-(YMMV - only ukcensusapi is currently available via conda-forge)
+(humanleague is not currently available via conda-forge, so should be installed with pip for now)
 
 ```bash
 $ conda config --add channels conda-forge # if you haven't already
-$ conda install ukcensusapi
+$ conda install ukcensusapi ukpopulation
 ```
 
 ### Installation and Testing
@@ -99,6 +101,9 @@ where config-file is a JSON file containing the model parameters and settings. E
 }
 ```
 ### Running a household microsimulation
+
+The requires, as input, a microsynthesised population of households for one or more LADs at OA level for a census year. This data can be generated from census (aggregate) data using the household_microsynth package.
+
 ```
 $ scripts/run_ssm_h.py --help
 usage: run_ssm_h.py [-h] [-c config-file] LAD [LAD ...]
@@ -114,8 +119,7 @@ optional arguments:
                         the model configuration file (json). See
                         config/*_example.json`
 ```                        
-                        
-                     
+
 where config-file is a JSON file containing the model parameters and settings. Examples can be found in the config subdirectory of this package.
 ```json
 {
@@ -130,14 +134,98 @@ where config-file is a JSON file containing the model parameters and settings. E
 }
 ```
 
+### Running the assignment algorithm
 
-### Running dynamic population microsimulation
+This algorithm takes LAD-level populations and households at a specific time and assigns people to the households. 
 
 ```
-scripts/run_microsynth.py E09000001 MSOA11 2001 2039
+$ scripts/run_assignment.py --help
+usage: run_assignment.py [-h] [-c config-file] LAD [LAD ...]
+
+static sequential (population/household) microsimulation
+
+positional arguments:
+  LAD                   ONS code for LAD (multiple LADs can be set).
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c config-file, --config config-file
+                        the model configuration file (json). See
+                        config/*_example.json
+
 ```
-NB Runtime for a medium-sized local authority for all 39 years is likely to be well over 24h.
+with a configuration like:
+```
+$ cat config/ass_example.json
+{
+  "person_resolution": "MSOA11",
+  "household_resolution": "OA11",
+  "projection": "ppp",
+  "strict": true,
+  "year": 2011,
+  "data_dir": "./data"
+}
+```
 
-### Running the assignment (people->households) algorithm
-TODO
 
+#### Requirements
+
+It requires data from the household microsimulations and the population microsimulations as described above.
+
+#### Methodology
+
+The methodology used to is to randomly sample of the synthetic populations from distributions defined by census microdata. Broadly speaking this relates the age, sex, and ethnicity of the HRP to the age, sex, and ethnicity of other household members. It helps to avoid nonsensical or unlikely household combinations such as cohabiting couples with enormous age differences, or children who are only fractionally younger than a parent. The effect is preserve the distribution of household structures seen in the last census. More up-to-date information may be available for surveys (e.g. BHPS) but may lack the breadth of the census microdata. 
+
+Of the household structures defined in the census, all contain one household reference person, and some categories are more precise about the number and status of the occupants. For example, single-occupant households must contain a single adult; single-parent households of size 3 must contain one adult and two children. Conversely, multiple occupant households containing 4+ occupants are less well defined.
+
+The approach taken in the algorithm is to get the specific structures assigned first. There is additional leeway provided by the facts that:
+- the household data includes empty households (as per census), which can be populated if necessary.
+- the population data is at a lower geographical resolution so a given household (in a specific OA) has a larger pool of people to sample from (the containing MSOA).
+
+The notion of assignment in this context means linking rows in two tables: the household table is given an additional column that refers to an entry in the person table, this is the HRP. The people table is given a column containing a household ID. Once assignment is complete, every person will be associated with a household, and every household will be associated with a HRP. Once a household is filled, it is marked as such and no more people can be assigned to it,
+
+The algorithm loops over the MSOAs in the regions, assigning people to households in the following order:
+- HRP. This is the key link between people and households. We rely heavily on distributions from census microdata that link the HRP characteristics with those of other members of the household.
+- partners of HRPs are then sampled for the relevant households.
+- children are then sampled
+- multi-person households
+- communal establishments
+
+At this point many households will be fully assigned, but there will generally be unassigned adults and children in the population. They are assigned to those households that are not already full. 
+
+This process is repeated for each MSOA in the region.
+
+### Batch Processing
+
+HPC facilities are necessary to run a country-wide simulation in any reasonable timeframe (for assignment at least). The examples below have been run on the ARC3 environment, part of the High Performance Computing facilities at the University of Leeds, UK. 
+
+The scripts should be relatively easy to modify to run on other clusters supporting [SGE](https://en.wikipedia.org/wiki/Oracle_Grid_Engine). 
+
+#### Running a population microsimulation
+
+Run countrywide, using the default configuration
+```
+$ qsub ./pbatch.sh config/ssm_default.json
+```
+The SSM algorithm runs sufficiently quickly that each individual process computes 10 LADs consecutively.
+
+#### Running a household microsimulation
+
+Run countrywide, using the default configuration
+```
+$ qsub ./hbatch.sh config/ssm_h_default.json
+```
+The SSM algorithm runs sufficiently quickly that each individual process computes 10 LADs consecutively.
+
+#### Running the assignment algorithm
+
+Run countrywide, using the default configuration
+```
+$ qsub ./abatch.sh config/ass_default.json
+```
+Run a single LAD (Newcastle):
+```
+$ qsub ./asingle.sh config/ass_default.json E08000021
+```
+
+The SSM algorithm runs sufficiently slowly that each LAD requires a dedicated process.

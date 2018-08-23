@@ -48,7 +48,7 @@ def unlistify(table, columns, sizes, values):
   pivot = table.pivot_table(index=columns, values=values)
   # order must be same as column order above
   array = np.zeros(sizes, dtype=int)
-  array[pivot.index.labels] = pivot.values.flat
+  array[tuple(pivot.index.labels)] = pivot.values.flat
   return array
 
 # this is a copy-paste from household_microsynth
@@ -108,7 +108,7 @@ def adjust_mye_age(mye):
   agg86["C_AGE"] = 86
   agg86 = agg86.reset_index()
 
-  mye_adj = mye_adj.append(agg86, ignore_index=True)
+  mye_adj = mye_adj.append(agg86, ignore_index=True, sort=False)
 
   # ensure the totals in the adjusted table match the originals (within precision)
   assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
@@ -163,9 +163,7 @@ def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
   n_geog = len(dc1117ew.GEOGRAPHY_CODE.unique())
   n_sex = 2 #len(dc1117ew.C_SEX.unique())
   n_age = len(dc1117ew.C_AGE.unique())
-  print(dc1117ew.head())
   cen11sa = unlistify(dc1117ew, ["GEOGRAPHY_CODE", "C_SEX", "C_AGE"], [n_geog, n_sex, n_age], "OBS_VALUE")
-  print(cen11sa.sum())
   n_eth = len(dc2101ew.C_ETHPUK11.unique())
   cen11se = unlistify(dc2101ew, ["GEOGRAPHY_CODE", "C_SEX", "C_ETHPUK11"], [n_geog, n_sex, n_eth], "OBS_VALUE")
 
@@ -174,8 +172,6 @@ def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
 
   # microsynthesise these two into a 4D seed (if this has a lot of zeros can have big impact on microsim)
   print("Synthesising 2011 seed population...", end='')
-  print(cen11sa.sum())
-  print(cen11se.sum())  
   msynth = hl.qis([np.array([0, 1, 2]), np.array([0, 1, 3])], [cen11sa, cen11se])
   check_result(msynth)
   print("OK")
