@@ -21,4 +21,9 @@
 # get LAD codes
 . ./lad_array_grouped10.sh
 
-scripts/run_ssm.py -c config/ssm_default.json ${lads[$SGE_TASK_ID]}
+if [ "$#" != "2" ]; then
+  echo "usage: qsub $0 <config-file>" 
+  exit 1 
+fi
+
+scripts/run_ssm.py -c $1 ${lads[$SGE_TASK_ID]}

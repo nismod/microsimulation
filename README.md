@@ -7,9 +7,9 @@ Static and dynamic, population and household, microsimulation models. Take a bas
 
 Current status:
 - [X] static population microsimulation: refinement/testing
-- [ ] dynamic population microsimulation: in prototype, reimplementation in progress [here](https://github.com/virgesmith/neworder)
-- [X] quasi-dynamic househould microsimulation: basic model
-- [X] population-househould assignment algorithm : basic implementation
+- [ ] dynamic population microsimulation: in progress [here](https://github.com/virgesmith/neworder)
+- [X] quasi-dynamic household microsimulation: basic model
+- [X] population-househould assignment algorithm: basic implementation
 - [ ] coupled dynamic household-population microsimulation: drawing board
 
 ## Explanation of terms
@@ -17,7 +17,7 @@ Current status:
 - microsimulation: evolving a (microsynthesised) population forward in time
 - static: in this context, this means generating a synthetic population using estimated aggregate data, and a microsynthesis as a joint distribution
 - dynamic: in this context, this means evolving each entity as a dynamic progress, typically probabilistically. E.g. using Monte-Carlo and fertility/mortality/migration rates.
-- quasi-dynamic: in this context, a simplistic evolution whereby existing entities persist according to a survival probability and new entities are created to match a static estimate. 
+- quasi-dynamic: in this context, a simplistic evolution whereby existing entities persist according to a survival probability and new entities are created randomly to match a static estimate. 
 
 ## Introduction
 ### Static Microsimulation - Population
@@ -167,6 +167,7 @@ $ cat config/ass_example.json
 }
 ```
 
+
 #### Requirements
 
 It requires data from the household microsimulations and the population microsimulations as described above.
@@ -193,3 +194,38 @@ The algorithm loops over the MSOAs in the regions, assigning people to household
 At this point many households will be fully assigned, but there will generally be unassigned adults and children in the population. They are assigned to those households that are not already full. 
 
 This process is repeated for each MSOA in the region.
+
+### Batch Processing
+
+HPC facilities are necessary to run a country-wide simulation in any reasonable timeframe (for assignment at least). The examples below have been run on the ARC3 environment, part of the High Performance Computing facilities at the University of Leeds, UK. 
+
+The scripts should be relatively easy to modify to run on other clusters supporting [SGE](https://en.wikipedia.org/wiki/Oracle_Grid_Engine). 
+
+#### Running a population microsimulation
+
+Run countrywide, using the default configuration
+```
+$ qsub ./pbatch.sh config/ssm_default.json
+```
+The SSM algorithm runs sufficiently quickly that each individual process computes 10 LADs consecutively.
+
+#### Running a household microsimulation
+
+Run countrywide, using the default configuration
+```
+$ qsub ./hbatch.sh config/ssm_h_default.json
+```
+The SSM algorithm runs sufficiently quickly that each individual process computes 10 LADs consecutively.
+
+#### Running the assignment algorithm
+
+Run countrywide, using the default configuration
+```
+$ qsub ./abatch.sh config/ass_default.json
+```
+Run a single LAD (Newcastle):
+```
+$ qsub ./asingle.sh config/ass_default.json E08000021
+```
+
+The SSM algorithm runs sufficiently slowly that each LAD requires a dedicated process.
