@@ -13,7 +13,7 @@
 # check env is set up correctly
 . ./check.sh
 
-if [ "$#" != "3" ]; then
+if [ "$#" != "2" ]; then
   echo "usage: qsub $0 <config-file> <lad-code>" 
   exit 1 
 fi

@@ -2,10 +2,6 @@
 
 # Batch submission
 
-# TODO check:
-# conda env
-# nomis key
-
 runtime="01:00:00"
 memory="2G"
 logdir=./logs
@@ -29,9 +25,10 @@ logdir=./logs
 # source the LADs into groups of 10
 . ./lad_array_grouped10.sh
 
-if [ "$#" != "2" ]; then
+if [ "$#" != "1" ]; then
   echo "usage: qsub $0 <config-file>" 
   exit 1 
 fi
 
 scripts/run_ssm_h.py -c $1 ${lads[$SGE_TASK_ID]}
+

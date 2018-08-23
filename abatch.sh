@@ -21,7 +21,7 @@
 # get LAD codes
 . ./lad_array_individual.sh
 
-if [ "$#" != "2" ]; then
+if [ "$#" != "1" ]; then
   echo "usage: qsub $0 <config-file>" 
   exit 1 
 fi
