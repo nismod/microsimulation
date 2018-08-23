@@ -28,10 +28,10 @@ module unload python-libs
 module unload python
 
 # Check we're in SGE env (i.e. this script submitted with qsub/qrsh)
-if [ "$SGE_O_HOME" == ""]; do
+if [ "$SGE_O_HOME" == "" ]; then 
   echo "No SGE env defined, has this script been submitted via e.g. qsub?"
   exit 1
-done
+fi
 
 # Check we are in a conda env - should be activated manually
 #source activate <env-name>
