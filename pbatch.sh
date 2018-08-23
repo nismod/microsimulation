@@ -25,5 +25,7 @@ if [ "$#" != "2" ]; then
   echo "usage: qsub $0 <config-file>" 
   exit 1 
 fi
+# can't pass args directly - they get lost
+export CFG_FILE=$1
 
-scripts/run_ssm.py -c $1 ${lads[$SGE_TASK_ID]}
+scripts/run_ssm.py -c $CFG_FILE ${lads[$SGE_TASK_ID]}
