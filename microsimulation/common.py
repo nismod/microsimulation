@@ -10,28 +10,6 @@ import ukcensusapi.NRScotland as Api_sc
 import humanleague as hl
 import microsimulation.utils as utils
 
-
-# hack to add gender where Scottish table is not available (pending response from NRScotland)
-def _hack_gender(table):
-  # hack gender in (TODO microsynthesise from seed?)
-  sex = hl.prob2IntFreq(np.array([0.5, 0.5]), table.OBS_VALUE.sum())
-
-  print(sex)
-  print(len(table))
-  print(table.head())
-
-  new = table.copy()
-  new.OBS_VALUE = (table.OBS_VALUE/2).round().astype(int)
-  new["C_SEX"] = 1 
-  new_f = table.copy()
-  new_f.OBS_VALUE = table.OBS_VALUE - new.OBS_VALUE
-  new_f["C_SEX"] = 2
-  new = new.append(new_f).reset_index(drop=True)
-  assert(table.OBS_VALUE.sum() == new.OBS_VALUE.sum())
-#  print(new.iloc[0])
-  #print(new[new.C_SEX==1].OBS_VALUE.sum(), new[new.C_SEX==2].OBS_VALUE.sum())
-  return new.reset_index(drop=True)
-
 class Base(object):
   """
   Microsimulation base class - common functionality
@@ -53,25 +31,57 @@ class Base(object):
 
   def __get_census_data_sc(self):
 
-    # disaggregate LAD-level data?
+    print("Synthesising Scottish DC1117/DC2101 tables from univariate data")
     # age only, no gender
-    qs103sc = self.data_api_sc.get_data("QS103SC", "MSOA11", self.region, category_filters={"QS103SC_0_CODE": range(1,102)})
+    qs103sc = self.data_api_sc.get_data("QS103SC", self.region, self.resolution, category_filters={"QS103SC_0_CODE": range(1,102)})
+    qs103sc = utils.cap_value(qs103sc, "QS103SC_0_CODE", 86, "OBS_VALUE")
+    # sex only
+    qs104sc = self.data_api_sc.get_data("QS104SC", self.region, self.resolution, category_filters={"QS104SC_0_CODE": [1,2]})
 
-    dc1117sc = _hack_gender(qs103sc)
-    dc1117sc.rename(columns={"QS103SC_0_CODE": "C_AGE"}, inplace=True)
-    dc1117sc = utils.cap_value(dc1117sc, "C_AGE", 86, "OBS_VALUE")
+    ngeogs = len(qs103sc.GEOGRAPHY_CODE.unique())
+    nages = len(qs103sc.QS103SC_0_CODE.unique())
+    nsexes = 2
 
-    # ethnicity
-    dc2101sc = _hack_gender(self.data_api_sc.get_data("KS201SC", "MSOA11", self.region, category_filters={"KS201SC_0_CODE": [1,8,9,15,18,22]}))
-    dc2101sc.rename(columns={"KS201SC_0_CODE": "C_ETHPUK11"}, inplace=True)
-    
-    print(dc1117sc.OBS_VALUE.sum(), dc2101sc.OBS_VALUE.sum())
+    ga = utils.unlistify(qs103sc, ["GEOGRAPHY_CODE", "QS103SC_0_CODE"], [ngeogs, nages], "OBS_VALUE")
+    gs = utils.unlistify(qs104sc, ["GEOGRAPHY_CODE", "QS104SC_0_CODE"], [ngeogs, nsexes], "OBS_VALUE")
+    # TODO use a LAD-level seed population
+    msynth = hl.qis([np.array([0,1]), np.array([0,2])], [ga,gs])
+    utils.check_result(msynth)
 
-    assert(dc1117sc.OBS_VALUE.sum() == dc2101sc.OBS_VALUE.sum())
-    # dc6206sc = self.data_api_sc.get_data("DC6206SC", "MSOA11", self.region)
-    #raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
+    dc1117sc = utils.listify(msynth["result"], "OBS_VALUE", ["GEOGRAPHY_CODE", "C_AGE", "C_SEX"])
+    dc1117sc.GEOGRAPHY_CODE = utils.remap(dc1117sc.GEOGRAPHY_CODE, qs103sc.GEOGRAPHY_CODE.unique())
+    dc1117sc.C_AGE = utils.remap(dc1117sc.C_AGE, qs103sc.QS103SC_0_CODE.unique())
+    dc1117sc.C_SEX = utils.remap(dc1117sc.C_SEX, [1, 2])
+    #print(dc1117sc.head())
 
-#    print(dc1117sc.C_AGE.unique())
+    # These ETH codes are slightly different to E&W codes
+    # ETH Totals = [1,8,9,15,18,22]
+    ks201sc = self.data_api_sc.get_data("KS201SC", self.region, self.resolution, category_filters={"KS201SC_0_CODE": [2,3,4,5,6,7,8,10,11,12,13,14,16,17,19,20,21,23,24]})
+    neths = len(ks201sc.KS201SC_0_CODE.unique())
+    #print(ks201sc.head())
+    ge = utils.unlistify(ks201sc, ["GEOGRAPHY_CODE", "KS201SC_0_CODE"], [ngeogs, neths], "OBS_VALUE")
+    # TODO use a LAD-level seed population
+    msynth = hl.qis([np.array([0,1]), np.array([0,2])], [ge,gs])
+    utils.check_result(msynth)
+
+    dc2101sc = utils.listify(msynth["result"], "OBS_VALUE", ["GEOGRAPHY_CODE", "C_ETHPUK11", "C_SEX"])
+    dc2101sc.GEOGRAPHY_CODE = utils.remap(dc2101sc.GEOGRAPHY_CODE, qs103sc.GEOGRAPHY_CODE.unique())
+    dc2101sc.C_ETHPUK11 = utils.remap(dc2101sc.C_ETHPUK11, ks201sc.KS201SC_0_CODE.unique())
+    dc2101sc.C_SEX = utils.remap(dc2101sc.C_SEX, [1, 2])
+    #print(dc2101sc.head())
+
+
+    assert dc1117sc.OBS_VALUE.sum() == dc2101sc.OBS_VALUE.sum()
+
+    #print(self.data_api_sc.get_metadata("DC6206SC", "LAD"))
+    # TODO Aberdeen has 174869 in this table
+    # dc6206sc = self.data_api_sc.get_data("DC6206SC", self.region, "LAD", category_filters={"DC6206SC_1_CODE": 0, 
+    #                                                                                        "DC6206SC_0_CODE": [1,2,3,4,5,6],
+    #                                                                                        "DC6206SC_2_CODE": [1,2,3,4,5,6,7,8,9]})
+    #print(dc6206sc.OBS_VALUE.sum())
+    #print(dc6206sc.DC6206SC_2_CODE.unique())    
+    # # dc6206sc = self.data_api_sc.get_data("DC6206SC", "MSOA11", self.region)
+    # #raise NotImplementedError("Problem with MSOA-level detailed characteristics in Scottish census data")
 
     return (dc1117sc, dc2101sc, None)
 

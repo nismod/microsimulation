@@ -9,10 +9,10 @@ import humanleague as hl
 import ukpopulation.nppdata as nppdata
 import ukpopulation.snppdata as snppdata
 import ukpopulation.myedata as myedata
-import microsimulation.utils as Utils
-import microsimulation.common as Common
+import microsimulation.utils as utils
+import microsimulation.common as common
 
-class SequentialMicrosynthesis(Common.Base):
+class SequentialMicrosynthesis(common.Base):
   """
   Static microsimulation based on a sequence of microsyntheses
   Performs a sequence of static microsyntheses using census data as a seed populations and mid-year-estimates as marginal
@@ -22,7 +22,7 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __init__(self, region, resolution, variant, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
-    Common.Base.__init__(self, region, resolution, cache_dir)
+    common.Base.__init__(self, region, resolution, cache_dir)
 
     self.output_dir = output_dir
     self.fast_mode = fast_mode
@@ -63,7 +63,7 @@ class SequentialMicrosynthesis(Common.Base):
       print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
     print("Starting microsynthesis sequence...")
-    for year in Utils.year_sequence(ref_year, target_year):
+    for year in utils.year_sequence(ref_year, target_year):
       out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + self.variant + "_" + str(year) + ".csv"
       # this is inconsistent with the household microsynth (batch script checks whether output exists)
       # TODO make them consistent?
@@ -88,13 +88,13 @@ class SequentialMicrosynthesis(Common.Base):
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
     if year < self.snpp_api.min_year(self.region):
-      age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.mye_api.filter(year, self.region)), self.region)
+      age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(year, self.region)), self.region)
     elif year <= self.npp_api.max_year():
       # Don't attempt to apply NPP variant if before the start of the NPP data
       if year < self.npp_api.min_year():
-        age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
+        age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
       else:
-        age_sex = Utils.create_age_sex_marginal(Utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
+        age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
@@ -126,10 +126,10 @@ class SequentialMicrosynthesis(Common.Base):
 
     # col names and remapped values
     table = pd.DataFrame(columns=["Area", "DC1117EW_C_SEX", "DC1117EW_C_AGE", "DC2101EW_C_ETHPUK11"])
-    table.Area = Utils.remap(rawtable[0], self.geog_map)
-    table.DC1117EW_C_SEX = Utils.remap(rawtable[1], [1, 2])
-    table.DC1117EW_C_AGE = Utils.remap(rawtable[2], range(1, 87))
-    table.DC2101EW_C_ETHPUK11 = Utils.remap(rawtable[3], self.eth_map)
+    table.Area = utils.remap(rawtable[0], self.geog_map)
+    table.DC1117EW_C_SEX = utils.remap(rawtable[1], [1, 2])
+    table.DC1117EW_C_AGE = utils.remap(rawtable[2], range(1, 87))
+    table.DC2101EW_C_ETHPUK11 = utils.remap(rawtable[3], self.eth_map)
 
     # consistency checks (in fast mode just report discrepancies)
     self.__check(table, age_sex, oa_eth["result"])
@@ -169,19 +169,19 @@ class SequentialMicrosynthesis(Common.Base):
 
   def __get_census_data(self):
 
-    (dc1117ew, dc2101ew, dc6206ew) = self.get_census_data()
+    (dc1117, dc2101, dc6206) = self.get_census_data()
 
     # add children to adult-only table
-    #dc6206ew_adj = self.append_children(dc1117ew, dc6206ew)
+    #dc6206ew_adj = self.append_children(dc1117, dc6206)
     # For now we drop NS-SEC (not clear if needed)
-    dc6206ew_adj = None
+    dc6206_adj = None
 
-    self.geog_map = dc1117ew.GEOGRAPHY_CODE.unique()
-    self.eth_map = dc2101ew.C_ETHPUK11.unique()
+    self.geog_map = dc1117.GEOGRAPHY_CODE.unique()
+    self.eth_map = dc2101.C_ETHPUK11.unique()
     #self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
 
     # TODO seed with microdata
-    self.cen11 = Utils.microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew_adj)
+    self.cen11 = utils.microsynthesise_seed(dc1117, dc2101, dc6206_adj)
 
     # seed defaults to census 11 data, updates as simulate past 2011
     self.seed = self.cen11.astype(float)

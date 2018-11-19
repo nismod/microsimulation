@@ -11,7 +11,7 @@ import humanleague as hl
 def get_config():
   parser = argparse.ArgumentParser(description="static sequential (population/household) microsimulation")
 
-  parser.add_argument("-c", "--config", type=str, metavar="config-file", help="the model configuration file (json). See config/*_example.json")
+  parser.add_argument("-c", "--config", required=True, type=str, metavar="config-file", help="the model configuration file (json). See config/*_example.json")
   parser.add_argument("regions", type=str, nargs="+", metavar="LAD", help="ONS code for LAD (multiple LADs can be set).")
 
   args = parser.parse_args()
@@ -51,14 +51,27 @@ def unlistify(table, columns, sizes, values):
   array[tuple(pivot.index.labels)] = pivot.values.flat
   return array
 
+def listify(array, valuename, colnames):
+  """
+  converts a multidimensional numpy array into a pandas dataframe with colnames[0] referring to dimension 0, etc
+  and valuecolumn containing the array values
+  """
+  multiindex = pd.MultiIndex.from_product([range(i) for i in array.shape])
+  colmapping = {"level_"+str(i): colnames[i] for i in range(len(colnames))}
+
+  return pd.DataFrame({valuename: pd.Series(index=multiindex, data=array.flatten())}).reset_index().rename(colmapping, axis=1)
+
 # this is a copy-paste from household_microsynth
 def remap(indices, mapping):
   """
   Converts array of index values back into category values
   """
-  values = []
-  for i in range(0, len(indices)):
-    values.append(mapping[indices[i]])
+  # values = []
+  # for i in range(0, len(indices)):
+  #   values.append(mapping[indices[i]])
+
+  values = [mapping[indices[i]] for i in range(len(indices))]
+
   return values
 
 def check_and_invert(columns, excluded):
@@ -156,16 +169,16 @@ def check_result(msynth):
     raise ValueError("convergence failure")
 
 
-def microsynthesise_seed(dc1117ew, dc2101ew, dc6206ew):
+def microsynthesise_seed(dc1117, dc2101, dc6206):
   """
   Microsynthesise a seed population from census data
   """
-  n_geog = len(dc1117ew.GEOGRAPHY_CODE.unique())
-  n_sex = 2 #len(dc1117ew.C_SEX.unique())
-  n_age = len(dc1117ew.C_AGE.unique())
-  cen11sa = unlistify(dc1117ew, ["GEOGRAPHY_CODE", "C_SEX", "C_AGE"], [n_geog, n_sex, n_age], "OBS_VALUE")
-  n_eth = len(dc2101ew.C_ETHPUK11.unique())
-  cen11se = unlistify(dc2101ew, ["GEOGRAPHY_CODE", "C_SEX", "C_ETHPUK11"], [n_geog, n_sex, n_eth], "OBS_VALUE")
+  n_geog = len(dc1117.GEOGRAPHY_CODE.unique())
+  n_sex = 2 #len(dc1117.C_SEX.unique())
+  n_age = len(dc1117.C_AGE.unique())
+  cen11sa = unlistify(dc1117, ["GEOGRAPHY_CODE", "C_SEX", "C_AGE"], [n_geog, n_sex, n_age], "OBS_VALUE")
+  n_eth = len(dc2101.C_ETHPUK11.unique())
+  cen11se = unlistify(dc2101, ["GEOGRAPHY_CODE", "C_SEX", "C_ETHPUK11"], [n_geog, n_sex, n_eth], "OBS_VALUE")
 
   # TODO use microdata (national or perhaps regional) Mistral/persistent_data/seed_ASE_EW.csv
   # - requires unified age structure
