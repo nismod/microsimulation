@@ -26,6 +26,10 @@ class SequentialMicrosynthesisH:
     self.input_dir = input_dir
     self.output_dir = output_dir
 
+    self.scotland = False
+    if self.region[0] == "S":
+      self.scotland = True
+
     # load the subnational household projections
     self.__get_snhp_data()
 
@@ -40,6 +44,7 @@ class SequentialMicrosynthesisH:
     census_all = len(self.base_population)
     print("Base population (all):", census_all)
     print("Base population (occ):", census_occ)
+    print(self.snhp.head())
     print("DCLG estimate (occ):", self.snhp.loc[self.region, str(base_year)], "(", self.snhp.loc[self.region, str(base_year)] / census_occ - 1, ")")
 
     # occupancy factor - proportion of dwellings that are occupied by housholds
@@ -117,8 +122,11 @@ class SequentialMicrosynthesisH:
     """
     Loads preprocessed raw subnational household projection data (currently 2014-based)
     """
-    self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
-    #print(self.snhp.head())
+    if not self.scotland:
+      self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
+    else:
+      self.snhp = pd.read_csv(self.input_dir + "/snhp2016_sc.csv", index_col="GEOGRAPHY_CODE")
+    print(self.snhp.head())
 
   def __get_base_populationdata(self):
     """

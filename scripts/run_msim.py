@@ -38,6 +38,8 @@ def main(params):
 
 if __name__ == "__main__":
 
+  print("DEPRECATED")
+
   parser = argparse.ArgumentParser(description="dynamic (population) microsimulation")
 
   parser.add_argument("region", type=str, help="the ONS code of the local authority district (LAD) to be covered by the microsynthesis, e.g. E09000001")
@@ -47,4 +49,4 @@ if __name__ == "__main__":
 
   args = parser.parse_args()
 
-  main(args)
+  #main(args)
