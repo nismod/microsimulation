@@ -126,7 +126,6 @@ class SequentialMicrosynthesisH:
       self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
     else:
       self.snhp = pd.read_csv(self.input_dir + "/snhp2016_sc.csv", index_col="GEOGRAPHY_CODE")
-    print(self.snhp.head())
 
   def __get_base_populationdata(self):
     """

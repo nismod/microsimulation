@@ -175,7 +175,7 @@ class Assignment:
       # get all the occupied households with the same eth in the area 
       h_ref = self.h_data.loc[(self.h_data.Area.isin(oas))
                             & (self.h_data.LC4408_C_AHTHUK11.isin(self.hrp_index[hh_type]))
-                            # & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                            # & (self.h_data.LC4202_C_ETHHUK11 == eth)
                             & (self.h_data.HRPID == -1)].index
 
       n_hh = len(h_ref)
@@ -328,7 +328,7 @@ class Assignment:
       else: # just take first available person
         self.p_data.loc[p_ref[0], "HID"] = idx
         # mark as filled if 2 occupants
-        if self.h_data.loc[idx, "LC4404EW_C_SIZHUK11"] == 2:
+        if self.h_data.loc[idx, "LC4404_C_SIZHUK11"] == 2:
           self.h_data.loc[idx, "FILLED"] = True
 
 
@@ -336,7 +336,7 @@ class Assignment:
 
     # pool of single-parent households with nocc occupants 
     hsp_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
-                            & (self.h_data.LC4404EW_C_SIZHUK11 == nocc)
+                            & (self.h_data.LC4404_C_SIZHUK11 == nocc)
                             & (self.h_data.LC4408_C_AHTHUK11 == 4)
                             & (self.h_data.FILLED == False)].index
 
@@ -397,7 +397,7 @@ class Assignment:
 
     # pool of couple households with nocc occupants 
     hsp_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) 
-                            & (self.h_data.LC4404EW_C_SIZHUK11 == nocc)
+                            & (self.h_data.LC4404_C_SIZHUK11 == nocc)
                             & (self.h_data.LC4408_C_AHTHUK11.isin([2,3]))
                             & (self.h_data.FILLED == False)].index
 
@@ -448,7 +448,7 @@ class Assignment:
 
 
 # Selected household ethnicities
-# LC4202EW_C_ETHHUK11 = {
+# LC4202_C_ETHHUK11 = {
 #       "2": "White: English/Welsh/Scottish/Northern Irish/British",
 #       "3": "White: Irish",
 #       "4": "White: Other White",
@@ -529,18 +529,18 @@ class Assignment:
 
     # mark households as filled if appropriate
     if mark_filled:
-      hf_ref = self.h_data[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11 == 5) & (self.h_data.LC4404EW_C_SIZHUK11 == occupant)].index
+      hf_ref = self.h_data[(self.h_data.Area.isin(oas)) & (self.h_data.LC4408_C_AHTHUK11 == 5) & (self.h_data.LC4404_C_SIZHUK11 == occupant)].index
       self.h_data.loc[hf_ref, "FILLED"] = True
 
   # TODO use microdata rather than rough assumptions about age dist
   def __fill_communal(self, msoa, oas):
 
     # to ensure we dont inadvertently modify a copy rather than the original data just use index
-    c_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.QS420EW_CELL > -1)].index
+    c_ref = self.h_data.loc[(self.h_data.Area.isin(oas)) & (self.h_data.QS420_CELL > -1)].index
 
     # remember C_AGE=1 means 0
     for index in c_ref:
-      ctype = self.h_data.loc[index, "QS420EW_CELL"]
+      ctype = self.h_data.loc[index, "QS420_CELL"]
       if ctype < 22:
         p_ref = self.p_data.loc[(self.p_data.Area == msoa) & (self.p_data.HID < 0) & (self.p_data.DC1117EW_C_AGE > 75)].index
       elif ctype < 27:
@@ -596,7 +596,7 @@ class Assignment:
       n_c = len(c_unassigned)
 
       h_candidates = self.h_data.loc[(self.h_data.Area.isin(oas)) 
-                                   & (self.h_data.LC4202EW_C_ETHHUK11 == eth)
+                                   & (self.h_data.LC4202_C_ETHHUK11 == eth)
                                    & (self.h_data.LC4408_C_AHTHUK11.isin([2,3,4,5])) 
                                    & (self.h_data.FILLED == False)].index
 
@@ -627,31 +627,31 @@ class Assignment:
                                                                   & (self.h_data.FILLED == False)]))
 
     print("single-parent one-child households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 4)
-                                                                          & (self.h_data.LC4404EW_C_SIZHUK11 == 2) 
+                                                                          & (self.h_data.LC4404_C_SIZHUK11 == 2) 
                                                                           & (self.h_data.FILLED == False)]))
 
     print("single-parent two-child households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 4)
-                                                                          & (self.h_data.LC4404EW_C_SIZHUK11 == 3) 
+                                                                          & (self.h_data.LC4404_C_SIZHUK11 == 3) 
                                                                           & (self.h_data.FILLED == False)]))
 
     print("single-parent 3+-child households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 4)
-                                                                         & (self.h_data.LC4404EW_C_SIZHUK11 == 4) 
+                                                                         & (self.h_data.LC4404_C_SIZHUK11 == 4) 
                                                                          & (self.h_data.FILLED == False)]))
 
     print("couple households with no children not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3])) 
-                                                                          & (self.h_data.LC4404EW_C_SIZHUK11 == 2) 
+                                                                          & (self.h_data.LC4404_C_SIZHUK11 == 2) 
                                                                           & (self.h_data.FILLED == False)]))
 
     print("couple households with one child not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3]))
-                                                                        & (self.h_data.LC4404EW_C_SIZHUK11 == 3) 
+                                                                        & (self.h_data.LC4404_C_SIZHUK11 == 3) 
                                                                         & (self.h_data.FILLED == False)]))
 
     print("couple households with 2+ children not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11.isin([2,3]))
-                                                                          & (self.h_data.LC4404EW_C_SIZHUK11 == 4) 
+                                                                          & (self.h_data.LC4404_C_SIZHUK11 == 4) 
                                                                           & (self.h_data.FILLED == False)]))
 
     print("mixed (2,3) households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 
-                                                        & (self.h_data.LC4404EW_C_SIZHUK11 < 4)
+                                                        & (self.h_data.LC4404_C_SIZHUK11 < 4)
                                                         & (self.h_data.FILLED == False)]))
 
     print("mixed (4+) households not filled:", len(self.h_data[(self.h_data.LC4408_C_AHTHUK11 == 5) 

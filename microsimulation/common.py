@@ -66,7 +66,8 @@ class Base(object):
 
     # These ETH codes are slightly different to E&W codes...
     # ETH Totals = [1,8,9,15,18,22]
-    eths = [2,3,4,5,6,7,8,10,11,12,13,14,16,17,19,20,21,23,24]
+    #eths = [2,3,4,5,6,7,8,10,11,12,13,14,16,17,19,20,21,23,24]
+    eths = [1,8,9,15,18,22]
     ks201sc = self.data_api_sc.get_data("KS201SC", self.region, self.resolution, category_filters={"KS201SC_0_CODE": eths})
     neths = len(ks201sc.KS201SC_0_CODE.unique())
 
