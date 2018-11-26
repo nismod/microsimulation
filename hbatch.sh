@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Batch submission
+# run like:
+# qsub hbatch.sh <config-file>
 
 runtime="01:00:00"
 memory="2G"
@@ -14,10 +16,10 @@ logdir=./logs
 #$ -o ./logs
 #$ -e ./logs
 
-# Tell SGE that this is an array job, with "tasks" numbered from 1 to 35
-#$ -t 1-35
+# Tell SGE that this is an array job, with "tasks" numbered from 1 to 38
+#$ -t 1-38
 # Restrict to max jobs (35 is all of them) 
-#$ -tc 35
+#$ -tc 38
 
 # check env is set up correctly
 . ./check.sh
