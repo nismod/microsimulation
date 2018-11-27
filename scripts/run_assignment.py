@@ -52,12 +52,9 @@ if __name__ == "__main__":
 
   if "profile" in params and params["profile"]:
     print("*** Profile mode ***")
-    profiler = cProfile.Profile()
-    profiler.enable()
-    profiler.run("main(params)") 
-    profiler.disable()
     filename = "profile.%d.out" % os.getpid()
-    print("writing profile stats to %s" % filename)
-    pstats.Stats(profiler, stream=open(filename, 'w')).sort_stats("cumulative").print_stats()
+    profiler = cProfile.run("main(params)", filename) 
+    print("writing profile stats to %s, To inspect use:" % filename)
+    print("$ python3 -m pstats %s" % filename)
   else:
     main(params)
