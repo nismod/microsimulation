@@ -22,6 +22,10 @@ class Assignment:
     # write pop back to
     self.output_dir = data_dir
 
+    self.scotland = False
+    if region[0] == "S":
+      self.scotland = True
+
     h_file = data_dir + "/ssm_hh_" + region + "_" + h_resolution + "_" + str(year) + ".csv"
     p_file = data_dir + "/ssm_" + region + "_" + p_resolution + "_" + variant + "_" + str(year) + ".csv"
 
@@ -47,8 +51,10 @@ class Assignment:
     else:
       print("Relaxed assignment mode - assignment will sample as many people as it can in any category of the sample population")
 
+    # TODO create one lookup table then use it...
     # get OA<->MSOA mapping
-    self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv.gz", compression="infer")
+    sc_geog_lookup = pd.read_csv("cache/sc_lookup.csv").rename({"OutputArea": "oa","DataZone": "lsoa","InterZone": "msoa", "Council": "la"}, axis=1)
+    self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv.gz", compression="infer").append(sc_geog_lookup)
 
     # distributions of various people by age/sex/ethnicity from microdata
     # see Mistral/R/microdata_dists.R
@@ -80,10 +86,23 @@ class Assignment:
     #eths = [eths[1]]
     #print(eths)
     # we have different eth resolution in the (micro)datasets
-    eth_mapping = {-1:-1, 2:2, 3:3, 4:4, 5:4, 7:5, 8:5, 9:5, 10:5, 12:6, 13:6, 14:6, 15:6, 16:6, 18:7, 19:7, 20:7, 22:8, 23:8}
-    # Replace finer ethnicities in population with the OA level / processed microdata values 
-    self.p_data.DC2101EW_C_ETHPUK11.replace(eth_mapping, inplace=True)
-
+    if not self.scotland:
+      eth_mapping = {-1:-1, 2:2, 3:3, 4:4, 5:4, 7:5, 8:5, 9:5, 10:5, 12:6, 13:6, 14:6, 15:6, 16:6, 18:7, 19:7, 20:7, 22:8, 23:8}
+      # Replace finer ethnicities in population with the OA level / processed microdata values 
+      self.p_data.DC2101EW_C_ETHPUK11.replace(eth_mapping, inplace=True)
+    else:
+      # map to coarser ethnicity
+      eth_mapping = {-1:-1, 1:1, 8:2, 9:3, 15:4, 18:5, 22:6}
+      self.p_data.DC2101EW_C_ETHPUK11.replace(eth_mapping, inplace=True)
+      # eths = self.hrp_dist["sgl"].ethhuk11.unique()
+      # for eth in eths:
+      #   print(eth, len(self.hrp_dist["sgl"][self.hrp_dist["sgl"].ethhuk11 == eth]))
+      # now remap to values in the microdata
+      eth_remapping = {-1:-1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:8}
+      self.p_data.DC2101EW_C_ETHPUK11.replace(eth_remapping, inplace=True)
+      self.h_data.LC4202_C_ETHHUK11.replace(eth_remapping, inplace=True)
+      
+  
     self.stats()
 
     msoas = self.p_data.Area.unique()
