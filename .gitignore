@@ -107,3 +107,4 @@ cache/
 run.sh.o*
 run.sh.e*
 logs/
+profile.*.out

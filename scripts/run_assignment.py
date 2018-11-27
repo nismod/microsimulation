@@ -2,10 +2,13 @@
 
 """ run_assignment.py """
 
+import os
+import sys
 import time
 import argparse
 import microsimulation.assignment as Assignment
 import microsimulation.utils as utils
+import cProfile, pstats
 
 DEFAULT_DATA_DIR = "./data"
 
@@ -45,5 +48,16 @@ def main(params):
 
 if __name__ == "__main__":
 
-  params = utils.get_config() 
-  main(params)
+  params = utils.get_config()
+
+  if "profile" in params and params["profile"]:
+    print("*** Profile mode ***")
+    profiler = cProfile.Profile()
+    profiler.enable()
+    profiler.run("main(params)") 
+    profiler.disable()
+    filename = "profile.%d.out" % os.getpid()
+    print("writing profile stats to %s" % filename)
+    pstats.Stats(profiler, stream=open(filename, 'w')).sort_stats("cumulative").print_stats()
+  else:
+    main(params)

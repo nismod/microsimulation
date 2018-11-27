@@ -4,5 +4,6 @@
   "projection": "ppp",
   "strict": true,
   "year": 2018,
-  "data_dir": "./data"
+  "data_dir": "./data",
+  "profile": true
 }
