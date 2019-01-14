@@ -17,8 +17,7 @@ class SequentialMicrosynthesisH:
   """
 
   # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
-  SNHP_YEAR = 2014
-
+  
   def __init__(self, region, resolution, cache_dir, upstream_dir, input_dir, output_dir):
 
     self.region = region
@@ -33,8 +32,11 @@ class SequentialMicrosynthesisH:
 
     # load the subnational household projections
     self.snhpdata = SNHPData.SNHPData(cache_dir)
-    # old way (needed for pre-2016 data)
-    self.__get_snhp_data(cache_dir)
+    # old way (needed for pre-2014/6 data for Wales/Scotland/NI)
+    if not self.scotland:
+      self.snhp_fallback = pd.read_csv(self.input_dir + "/snhp2014.csv", index_col="AreaCode")
+    else:
+      self.snhp_fallback = pd.read_csv(self.input_dir + "/snhp2016_sc.csv", index_col="GEOGRAPHY_CODE")
 
     # load the output from the microsynthesis (census 2011 based)
     self.base_population = self.__get_base_populationdata()
@@ -45,10 +47,12 @@ class SequentialMicrosynthesisH:
     """
     census_occ = len(self.base_population[self.base_population.LC4402_C_TYPACCOM > 0])
     census_all = len(self.base_population)
-    print("Base population (all):", census_all)
-    print("Base population (occ):", census_occ)
+    print("Base population (census-all):", census_all)
+    print("Base population (census-occ):", census_occ)
+    print("SNHP availability: %d-%d" % (self.snhpdata.min_year(self.region), self.snhpdata.max_year(self.region)))
     #print(self.snhp.head())
-    print("DCLG estimate (occ):", self.snhp.loc[self.region, str(base_year)], "(", self.snhp.loc[self.region, str(base_year)] / census_occ - 1, ")")
+    basepop = int(self.__get_snhp(base_year))
+    print("SNHP base population (occ):", basepop, "(", basepop / census_occ - 1, ")")
 
     # occupancy factor - proportion of dwellings that are occupied by housholds
     # assume this proportion stays roughly constant over the simulation period
@@ -64,8 +68,8 @@ class SequentialMicrosynthesisH:
     if target_year < base_year:
       raise ValueError("2001 is the earliest supported target year")
 
-    if target_year > SequentialMicrosynthesisH.SNHP_YEAR + 25:
-      raise ValueError(str(SequentialMicrosynthesisH.SNHP_YEAR + 25) + " is the current latest supported end year")
+    if target_year > self.snhpdata.max_year(self.region):
+      raise ValueError("%d is the current latest supported end year" % self.snhpdata.max_year(self.region))
 
     # if self.fast_mode:
     #   print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
@@ -82,10 +86,7 @@ class SequentialMicrosynthesisH:
       print("Generating ", out_file, " [SNHP]", "... ",
             sep="", end="", flush=True)
       # workaround for pre-projection years
-      pop = int(self.snhp.loc[self.region, str(year)] / occupancy_factor)
-      if year >= self.snhpdata.min_year(self.region) and year <= self.snhpdata.max_year(self.region):
-        pop2 = self.snhpdata.aggregate(self.region, year).OBS_VALUE[0] / occupancy_factor
-        print("pop=%d pop2=%d" % (pop, pop2))
+      pop = int(self.__get_snhp(year) / occupancy_factor)
 
       # 1-dissolution_rate applied to existing population
       persisting = int(len(population) * (1.0 - dissolution_rate))
@@ -125,15 +126,15 @@ class SequentialMicrosynthesisH:
     #   print("\n".join(failures))
     #   raise RuntimeError("Consistency checks failed, see log for further details")
 
-  def __get_snhp_data(self, cache_dir):
+  def __get_snhp(self, year):
     """
-    Fetches subnational household projection data (mostly 2016-based)
+    Fetches subnational household projection data (mostly 2016-based) as a backup for missing years before the proection data starts 
+    England data starts in 2011 so not a problem, 
     """
-    if not self.scotland:
-      self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
+    if year >= self.snhpdata.min_year(self.region) and year <= self.snhpdata.max_year(self.region):
+      return self.snhpdata.aggregate(self.region, year).OBS_VALUE[0]
     else:
-      self.snhp = pd.read_csv(self.input_dir + "/snhp2016_sc.csv", index_col="GEOGRAPHY_CODE")
-    self.snhp2 = self.snhpdata
+      return self.snhp_fallback.loc[self.region, str(year)]
 
   def __get_base_populationdata(self):
     """
