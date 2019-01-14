@@ -88,7 +88,7 @@ class SequentialMicrosynthesis(common.Base):
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
     if year < self.snpp_api.min_year(self.region):
-      age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(year, self.region)), self.region)
+      age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
     elif year <= self.npp_api.max_year():
       # Don't attempt to apply NPP variant if before the start of the NPP data
       if year < self.npp_api.min_year():

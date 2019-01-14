@@ -5,14 +5,13 @@ from unittest import TestCase
 
 import microsimulation.static as Static
 import microsimulation.static_h as StaticH
-import microsimulation.dynamic as Dynamic
 import microsimulation.assignment as Assignment
 
 class Test(TestCase):
 
   # City of London MSOA (one geog area)
   def test_static(self):
-    region = "E09000001"
+    region = "E07000041"
     resolution = "MSOA11"
     variant = "ppp"
     cache = "./cache"
@@ -31,21 +30,13 @@ class Test(TestCase):
     region = "E09000001"
     resolution = "OA11"
     # requires output from upstream model
+    cache_dir = "./cache"
     upstream_dir = "../household_microsynth/data/"
     input_dir = "./persistent_data/"
     downstream_dir = "./data/"
-    microsim = StaticH.SequentialMicrosynthesisH(region, resolution, upstream_dir, input_dir, downstream_dir)
+    microsim = StaticH.SequentialMicrosynthesisH(region, resolution, cache_dir, upstream_dir, input_dir, downstream_dir)
     microsim.run(2011, 2039)
 
-    #self.assertTrue(False)
-
-  # City of London MSOA (one geog area)
-  def test_dynamic(self):
-    region = "E09000001"
-    resolution = "MSOA11"
-    cache = "./cache"
-    microsim = Dynamic.Microsimulation(region, resolution, cache)
-    microsim.run(2011, 2012)
     #self.assertTrue(False)
 
   # City of London assignment 

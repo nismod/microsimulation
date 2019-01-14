@@ -4,6 +4,7 @@
   "projection": "ppp",
   "census_ref_year": 2011,
   "horizon_year": 2020,
+  "cache_dir": "./cache",
   "upstream_dir": "../household_microsynth/data",
   "input_dir": "./persistent_data",
   "output_dir": "./data"

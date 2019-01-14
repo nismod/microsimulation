@@ -5,6 +5,7 @@ import pandas as pd
 #from random import randint
 
 #import humanleague as hl
+import ukpopulation.snhpdata as SNHPData 
 import microsimulation.utils as Utils
 
 class SequentialMicrosynthesisH:
@@ -18,7 +19,7 @@ class SequentialMicrosynthesisH:
   # Define the year that SNPP was based on (assumeds can then project to SNPP_YEAR+25)
   SNHP_YEAR = 2014
 
-  def __init__(self, region, resolution, upstream_dir, input_dir, output_dir):
+  def __init__(self, region, resolution, cache_dir, upstream_dir, input_dir, output_dir):
 
     self.region = region
     self.resolution = resolution
@@ -31,7 +32,9 @@ class SequentialMicrosynthesisH:
       self.scotland = True
 
     # load the subnational household projections
-    self.__get_snhp_data()
+    self.snhpdata = SNHPData.SNHPData(cache_dir)
+    # old way (needed for pre-2016 data)
+    self.__get_snhp_data(cache_dir)
 
     # load the output from the microsynthesis (census 2011 based)
     self.base_population = self.__get_base_populationdata()
@@ -44,7 +47,7 @@ class SequentialMicrosynthesisH:
     census_all = len(self.base_population)
     print("Base population (all):", census_all)
     print("Base population (occ):", census_occ)
-    print(self.snhp.head())
+    #print(self.snhp.head())
     print("DCLG estimate (occ):", self.snhp.loc[self.region, str(base_year)], "(", self.snhp.loc[self.region, str(base_year)] / census_occ - 1, ")")
 
     # occupancy factor - proportion of dwellings that are occupied by housholds
@@ -78,7 +81,11 @@ class SequentialMicrosynthesisH:
       # With dynamic update of seed for now just recompute even if file exists
       print("Generating ", out_file, " [SNHP]", "... ",
             sep="", end="", flush=True)
+      # workaround for pre-projection years
       pop = int(self.snhp.loc[self.region, str(year)] / occupancy_factor)
+      if year >= self.snhpdata.min_year(self.region) and year <= self.snhpdata.max_year(self.region):
+        pop2 = self.snhpdata.aggregate(self.region, year).OBS_VALUE[0] / occupancy_factor
+        print("pop=%d pop2=%d" % (pop, pop2))
 
       # 1-dissolution_rate applied to existing population
       persisting = int(len(population) * (1.0 - dissolution_rate))
@@ -118,14 +125,15 @@ class SequentialMicrosynthesisH:
     #   print("\n".join(failures))
     #   raise RuntimeError("Consistency checks failed, see log for further details")
 
-  def __get_snhp_data(self):
+  def __get_snhp_data(self, cache_dir):
     """
-    Loads preprocessed raw subnational household projection data (currently 2014-based)
+    Fetches subnational household projection data (mostly 2016-based)
     """
     if not self.scotland:
       self.snhp = pd.read_csv(self.input_dir + "/snhp" + str(SequentialMicrosynthesisH.SNHP_YEAR) + ".csv", index_col="AreaCode")
     else:
       self.snhp = pd.read_csv(self.input_dir + "/snhp2016_sc.csv", index_col="GEOGRAPHY_CODE")
+    self.snhp2 = self.snhpdata
 
   def __get_base_populationdata(self):
     """

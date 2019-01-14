@@ -9,6 +9,7 @@ import microsimulation.utils as utils
 #assert humanleague.version() > 1
 DEFAULT_INPUT_DIR = "./persistent_data"
 DEFAULT_OUTPUT_DIR = "./data"
+DEFAULT_CACHE_DIR = "./cache"
 
 def main(params):
   """ Run it """
@@ -22,6 +23,7 @@ def main(params):
   upstream_dir = params["upstream_dir"] if "upstream_dir" in params else DEFAULT_INPUT_DIR
   input_dir = params["input_dir"] if "input_dir" in params else DEFAULT_INPUT_DIR
   output_dir = params["output_dir"] if "output_dir" in params else DEFAULT_OUTPUT_DIR
+  cache_dir = params["cache_dir"] if "cache_dir" in params else DEFAULT_CACHE_DIR
 
   for region in params["regions"]:
     try:
@@ -30,7 +32,7 @@ def main(params):
 
       print("Static H Microsimulation ", region, "@", resolution)
       # init microsynthesis
-      ssm = StaticH.SequentialMicrosynthesisH(region, resolution, upstream_dir, input_dir, output_dir)
+      ssm = StaticH.SequentialMicrosynthesisH(region, resolution, cache_dir, upstream_dir, input_dir, output_dir)
       # generate the population
       ssm.run(ref_year, horizon_year)
 
