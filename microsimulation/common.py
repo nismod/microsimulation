@@ -109,14 +109,11 @@ class Base(object):
     """
     Download/cache census data
     """
-
     # convert input string to enum
     resolution = self.data_api_en.GeoCodeLookup[self.resolution]
 
-    if self.region in self.data_api_en.GeoCodeLookup.keys():
-      region_codes = self.data_api_en.GeoCodeLookup[self.region]
-    else:
-      region_codes = self.data_api_en.get_lad_codes(self.region)
+    region_codes = self.data_api_en.get_lad_codes(self.region)
+
     if not region_codes:
       raise ValueError("no regions match the input: \"" + self.region + "\"")
 

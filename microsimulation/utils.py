@@ -48,7 +48,7 @@ def unlistify(table, columns, sizes, values):
   pivot = table.pivot_table(index=columns, values=values)
   # order must be same as column order above
   array = np.zeros(sizes, dtype=int)
-  array[tuple(pivot.index.labels)] = pivot.values.flat
+  array[tuple(pivot.index.codes)] = pivot.values.flat
   return array
 
 def listify(array, valuename, colnames):
@@ -96,7 +96,7 @@ def cap_value(table, colname, maxval, sumcolname):
   table_over = table[table[colname] >= maxval].copy().groupby(check_and_invert(table.columns.values, [colname, sumcolname]))[sumcolname].sum().reset_index()
   table_over[colname] = maxval
 
-  return table_under.append(table_over)
+  return table_under.append(table_over, sort=False)
 
 def adjust_mye_age(mye):
   """
@@ -152,7 +152,7 @@ def adjust_pp_age(pp):
   agg86["C_AGE"] = 85
   agg86 = agg86.reset_index()
 
-  mye_adj = mye_adj.append(agg86, ignore_index=True)
+  mye_adj = mye_adj.append(agg86, ignore_index=True, sort=False)
 
   # ensure the totals in the adjusted table match the originals (within precision)
   assert relEqual(mye_adj.OBS_VALUE.sum(), pop)
