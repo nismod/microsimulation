@@ -53,8 +53,7 @@ class Assignment:
 
     # TODO create one lookup table then use it...
     # get OA<->MSOA mapping
-    sc_geog_lookup = pd.read_csv("cache/sc_lookup.csv").rename({"OutputArea": "oa","DataZone": "lsoa","InterZone": "msoa", "Council": "la"}, axis=1)
-    self.geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv.gz", compression="infer").append(sc_geog_lookup)
+    self.geog_lookup = pd.read_csv("./persistent_data/gb_geog_lookup.csv.gz", compression="infer").rename({"OA": "oa","LSOA": "lsoa","MSOA": "msoa", "LAD": "la"}, axis=1)
 
     # distributions of various people by age/sex/ethnicity from microdata
     # see Mistral/R/microdata_dists.R
