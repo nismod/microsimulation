@@ -16,6 +16,7 @@ def main(params):
   resolution = params["resolution"]
   ref_year = params["census_ref_year"]
   horizon_year = params["horizon_year"]
+  is_custom = params.get("custom_projection", False)
   variant = params["projection"]
   
   cache_dir = params["cache_dir"] if "cache_dir" in params else DEFAULT_CACHE_DIR
@@ -31,7 +32,7 @@ def main(params):
       print("Static P Microsimulation: ", region, "@", resolution)
 
       # init microsynthesis
-      ssm = Static.SequentialMicrosynthesis(region, resolution, variant, cache_dir, output_dir, use_fast_mode)
+      ssm = Static.SequentialMicrosynthesis(region, resolution, variant, is_custom, cache_dir, output_dir, use_fast_mode)
       ssm.run(ref_year, horizon_year)
 
       print(region, "done. Exec time(s): ", time.time() - start_time)

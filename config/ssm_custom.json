@@ -1,0 +1,10 @@
+{
+  "resolution": "MSOA11",
+  "custom_projection": true,
+  "projection": "simim_scenario0e",
+  "census_ref_year": 2011,
+  "horizon_year": 2050,
+  "mode": "fast",
+  "cache_dir": "./cache",
+  "output_dir": "./data"
+}

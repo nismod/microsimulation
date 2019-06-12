@@ -8,6 +8,7 @@ import pandas as pd
 import humanleague as hl
 import ukpopulation.nppdata as nppdata
 import ukpopulation.snppdata as snppdata
+import ukpopulation.customsnppdata as customsnppdata
 import ukpopulation.myedata as myedata
 import microsimulation.utils as utils
 import microsimulation.common as common
@@ -20,21 +21,38 @@ class SequentialMicrosynthesis(common.Base):
   based microsimulation
   """
 
-  def __init__(self, region, resolution, variant, cache_dir="./cache", output_dir="./data", fast_mode=False):
+  # TODO fix this interface discrepancy
+  def __min_max_years(self):
+    if self.is_custom:
+      min_year = self.snpp_api.min_year()
+      max_year = self.snpp_api.max_year()
+    else:
+      min_year = self.snpp_api.min_year(self.region)
+      max_year = self.snpp_api.max_year(self.region)
+    return (min_year, max_year)
+
+  def __init__(self, region, resolution, variant, is_custom=False, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
     common.Base.__init__(self, region, resolution, cache_dir)
 
     self.output_dir = output_dir
     self.fast_mode = fast_mode
     self.variant = variant
+    self.is_custom = is_custom
 
     # init the population (projections) modules
     self.mye_api = myedata.MYEData(cache_dir)
     self.npp_api = nppdata.NPPData(cache_dir)
-    self.snpp_api = snppdata.SNPPData(cache_dir)
+    if is_custom:
+      if variant not in customsnppdata.list_custom_projections(cache_dir):
+        raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
+      print("Using custom SNPP variant %s" % variant)
+      self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
+    else:
+      self.snpp_api = snppdata.SNPPData(cache_dir)
 
     # validation
-    if not self.variant in nppdata.NPPData.VARIANTS:
+    if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
       raise ValueError(self.variant + " is not a known projection variant")
     if not isinstance(self.fast_mode, bool):
       raise ValueError("fast mode should be boolean")
@@ -69,9 +87,11 @@ class SequentialMicrosynthesis(common.Base):
       # TODO make them consistent?
       # With dynamic update of seed for now just recompute even if file exists
       #if not os.path.isfile(out_file):
-      if year < self.snpp_api.min_year(self.region):
+      min_year, max_year = self.__min_max_years()
+
+      if year < min_year:
         source = " [MYE]"
-      elif year <= self.snpp_api.max_year(self.region):  
+      elif year <= max_year:  
         source = " [SNPP]"
       else:
         source = " [XNPP]"
@@ -87,11 +107,13 @@ class SequentialMicrosynthesis(common.Base):
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
-    if year < self.snpp_api.min_year(self.region):
+    min_year, max_year = self.__min_max_years()
+    
+    if year < min_year:
       age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
     elif year <= self.npp_api.max_year():
       # Don't attempt to apply NPP variant if before the start of the NPP data
-      if year < self.npp_api.min_year():
+      if year < self.npp_api.min_year() or self.is_custom:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
       else:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
