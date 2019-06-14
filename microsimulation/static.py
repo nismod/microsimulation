@@ -21,16 +21,6 @@ class SequentialMicrosynthesis(common.Base):
   based microsimulation
   """
 
-  # TODO fix this interface discrepancy
-  def __min_max_years(self):
-    if self.is_custom:
-      min_year = self.snpp_api.min_year()
-      max_year = self.snpp_api.max_year()
-    else:
-      min_year = self.snpp_api.min_year(self.region)
-      max_year = self.snpp_api.max_year(self.region)
-    return (min_year, max_year)
-
   def __init__(self, region, resolution, variant, is_custom=False, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
     common.Base.__init__(self, region, resolution, cache_dir)
@@ -43,10 +33,11 @@ class SequentialMicrosynthesis(common.Base):
     # init the population (projections) modules
     self.mye_api = myedata.MYEData(cache_dir)
     self.npp_api = nppdata.NPPData(cache_dir)
-    if is_custom:
+    if self.is_custom:
       if variant not in customsnppdata.list_custom_projections(cache_dir):
         raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
       print("Using custom SNPP variant %s" % variant)
+      print("NOTE: assuming custom SNPP variant disables rescaling to national variant")
       self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
     else:
       self.snpp_api = snppdata.SNPPData(cache_dir)
@@ -87,11 +78,10 @@ class SequentialMicrosynthesis(common.Base):
       # TODO make them consistent?
       # With dynamic update of seed for now just recompute even if file exists
       #if not os.path.isfile(out_file):
-      min_year, max_year = self.__min_max_years()
 
-      if year < min_year:
+      if year < self.snpp_api.min_year(self.region):
         source = " [MYE]"
-      elif year <= max_year:  
+      elif year <= self.snpp_api.max_year(self.region):  
         source = " [SNPP]"
       else:
         source = " [XNPP]"
@@ -106,13 +96,11 @@ class SequentialMicrosynthesis(common.Base):
     # Census/seed proportions for geography and ethnicity
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
-
-    min_year, max_year = self.__min_max_years()
-    
-    if year < min_year:
+   
+    if year < self.snpp_api.min_year(self.region):
       age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
     elif year <= self.npp_api.max_year():
-      # Don't attempt to apply NPP variant if before the start of the NPP data
+      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP 
       if year < self.npp_api.min_year() or self.is_custom:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
       else:

@@ -15,7 +15,7 @@ class Test(TestCase):
     resolution = "MSOA11"
     variant = "ppp"
     cache = "./cache"
-    microsim = Static.SequentialMicrosynthesis(region, resolution, variant, cache, "./data", True)
+    microsim = Static.SequentialMicrosynthesis(region, resolution, variant, False, cache, "./data", True)
     microsim.run(2011, 2012)
 
   def test_static_sc(self):
@@ -23,7 +23,7 @@ class Test(TestCase):
     resolution = "MSOA11"
     variant = "ppp"
     cache = "./cache"
-    microsim = Static.SequentialMicrosynthesis(region, resolution, variant, cache, "./data", True)
+    microsim = Static.SequentialMicrosynthesis(region, resolution, variant, False, cache, "./data", True)
     microsim.run(2011, 2012)
 
   def test_static_h(self):
