@@ -5,7 +5,6 @@ from unittest import TestCase
 
 import microsimulation.static as Static
 import microsimulation.static_h as StaticH
-import microsimulation.assignment as Assignment
 
 class Test(TestCase):
 
@@ -14,7 +13,7 @@ class Test(TestCase):
         region = "E07000041"
         resolution = "MSOA11"
         variant = "ppp"
-        cache = "./cache"
+        cache = "../cache" # modified from ./cache as previous was unsuitable for Leeds HPC (Arc3)
         microsim = Static.SequentialMicrosynthesis(region, resolution, variant, False, cache, "./data", True)
         microsim.run(2011, 2012)
 
@@ -22,7 +21,7 @@ class Test(TestCase):
         region = "S12000030"
         resolution = "MSOA11"
         variant = "ppp"
-        cache = "./cache"
+        cache = "../cache"
         microsim = Static.SequentialMicrosynthesis(region, resolution, variant, False, cache, "./data", True)
         microsim.run(2011, 2012)
 
@@ -30,7 +29,7 @@ class Test(TestCase):
         region = "E09000001"
         resolution = "OA11"
         # requires output from upstream model
-        cache_dir = "./cache"
+        cache_dir = "../cache"
         upstream_dir = "../household_microsynth/data/"
         input_dir = "./persistent_data/"
         downstream_dir = "./data/"

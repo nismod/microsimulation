@@ -14,185 +14,185 @@ import microsimulation.utils as utils
 import microsimulation.common as common
 
 class SequentialMicrosynthesis(common.Base):
-  """
-  Static microsimulation based on a sequence of microsyntheses
-  Performs a sequence of static microsyntheses using census data as a seed populations and mid-year-estimates as marginal
-  constraints. This is the simplest microsimulation model and is intended as a comparison/calibration for Monte-Carlo
-  based microsimulation
-  """
-
-  def __init__(self, region, resolution, variant, is_custom=False, cache_dir="./cache", output_dir="./data", fast_mode=False):
-
-    common.Base.__init__(self, region, resolution, cache_dir)
-
-    self.output_dir = output_dir
-    self.fast_mode = fast_mode
-    self.variant = variant
-    self.is_custom = is_custom
-
-    # init the population (projections) modules
-    self.mye_api = myedata.MYEData(cache_dir)
-    self.npp_api = nppdata.NPPData(cache_dir)
-    if self.is_custom:
-      if variant not in customsnppdata.list_custom_projections(cache_dir):
-        raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
-      print("Using custom SNPP variant %s" % variant)
-      print("NOTE: assuming custom SNPP variant disables rescaling to national variant")
-      self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
-    else:
-      self.snpp_api = snppdata.SNPPData(cache_dir)
-
-    # validation
-    if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
-      raise ValueError(self.variant + " is not a known projection variant")
-    if not isinstance(self.fast_mode, bool):
-      raise ValueError("fast mode should be boolean")
-
-    # TODO enable 2001 ref year?
-    # (down)load the census 2011 tables
-    self.__get_census_data()
-
-  def run(self, ref_year, target_year):
     """
-    Run the sequence
+    Static microsimulation based on a sequence of microsyntheses
+    Performs a sequence of static microsyntheses using census data as a seed populations and mid-year-estimates as marginal
+    constraints. This is the simplest microsimulation model and is intended as a comparison/calibration for Monte-Carlo
+    based microsimulation
     """
 
-    # TODO enable 2001 ref year?
+    def __init__(self, region, resolution, variant, is_custom=False, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
-    if ref_year != 2011:
-      raise ValueError("(census) reference year must be 2011")
+        common.Base.__init__(self, region, resolution, cache_dir)
 
-    if target_year < 2001:
-      raise ValueError("2001 is the earliest supported target year")
+        self.output_dir = output_dir
+        self.fast_mode = fast_mode
+        self.variant = variant
+        self.is_custom = is_custom
 
-    if target_year > self.npp_api.max_year():
-      raise ValueError(str(self.npp_api.max_year()) + " is the current latest supported end year")
+        # init the population (projections) modules
+        self.mye_api = myedata.MYEData(cache_dir)
+        self.npp_api = nppdata.NPPData(cache_dir)
+        if self.is_custom:
+            if variant not in customsnppdata.list_custom_projections(cache_dir):
+                raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
+            print("Using custom SNPP variant %s" % variant)
+            print("NOTE: assuming custom SNPP variant disables rescaling to national variant")
+            self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
+        else:
+            self.snpp_api = snppdata.SNPPData(cache_dir)
 
-    if self.fast_mode:
-      print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
+        # validation
+        if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
+            raise ValueError(self.variant + " is not a known projection variant")
+        if not isinstance(self.fast_mode, bool):
+            raise ValueError("fast mode should be boolean")
 
-    print("Starting microsynthesis sequence...")
-    for year in utils.year_sequence(ref_year, target_year):
-      out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + self.variant + "_" + str(year) + ".csv"
-      # this is inconsistent with the household microsynth (batch script checks whether output exists)
-      # TODO make them consistent?
-      # With dynamic update of seed for now just recompute even if file exists
-      #if not os.path.isfile(out_file):
+        # TODO enable 2001 ref year?
+        # (down)load the census 2011 tables
+        self.__get_census_data()
 
-      if year < self.snpp_api.min_year(self.region):
-        source = " [MYE]"
-      elif year <= self.snpp_api.max_year(self.region):  
-        source = " [SNPP]"
-      else:
-        source = " [XNPP]"
-      print("Generating ", out_file, source, "... ",
-            sep="", end="", flush=True)
-      msynth = self.__microsynthesise(year)
-      print("OK")
-      msynth.to_csv(out_file, index_label="PID")
+    def run(self, ref_year, target_year):
+        """
+        Run the sequence
+        """
 
-  def __microsynthesise(self, year): #LAD=self.region
+        # TODO enable 2001 ref year?
 
-    # Census/seed proportions for geography and ethnicity
-    oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
-    eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
-   
-    if year < self.snpp_api.min_year(self.region):
-      age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
-    elif year <= self.npp_api.max_year():
-      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP 
-      if year < self.npp_api.min_year() or self.is_custom:
-        age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
-      else:
-        age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
-    else:
-      raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
+        if ref_year != 2011:
+            raise ValueError("(census) reference year must be 2011")
 
-    # convert proportions/probabilities to integer frequencies
-    oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
-    eth = hl.prob2IntFreq(eth_prop, age_sex.sum())["freq"]
-    # combine the above into a 2d marginal using QIS-I and census 2011 or later data as the seed
-    oa_eth = hl.qisi(self.seed.sum((1, 2)), [np.array([0]), np.array([1])], [oa, eth])
-    if not (isinstance(oa_eth, dict) and oa_eth["conv"]):
-      raise RuntimeError("oa_eth did not converge")
+        if target_year < 2001:
+            raise ValueError("2001 is the earliest supported target year")
 
-    # now the full seeded microsynthesis
-    if self.fast_mode:
-      msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
-    else:
-      msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
-    if not msynth["conv"]:
-      print(msynth)
-      raise RuntimeError("msynth did not converge")
-    #print(msynth["pop"])
-    if self.fast_mode:
-      print("updating seed to", year, " ", end="")
-      self.seed = msynth["result"]
-      msynth["result"] = np.around(msynth["result"]).astype(int)
-    else:
-      print("updating seed to", year, " ", end="")
-      self.seed = msynth["result"].astype(float)
-    rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
+        if target_year > self.npp_api.max_year():
+            raise ValueError(str(self.npp_api.max_year()) + " is the current latest supported end year")
 
-    # col names and remapped values
-    table = pd.DataFrame(columns=["Area", "DC1117EW_C_SEX", "DC1117EW_C_AGE", "DC2101EW_C_ETHPUK11"])
-    table.Area = utils.remap(rawtable[0], self.geog_map)
-    table.DC1117EW_C_SEX = utils.remap(rawtable[1], [1, 2])
-    table.DC1117EW_C_AGE = utils.remap(rawtable[2], range(1, 87))
-    table.DC2101EW_C_ETHPUK11 = utils.remap(rawtable[3], self.eth_map)
+        if self.fast_mode:
+            print("Running in fast mode. Rounded IPF populations may not exactly match the marginals")
 
-    # consistency checks (in fast mode just report discrepancies)
-    self.__check(table, age_sex, oa_eth["result"])
+        print("Starting microsynthesis sequence...")
+        for year in utils.year_sequence(ref_year, target_year):
+            out_file = self.output_dir + "/ssm_" + self.region + "_" + self.resolution + "_" + self.variant + "_" + str(year) + ".csv"
+            # this is inconsistent with the household microsynth (batch script checks whether output exists)
+            # TODO make them consistent?
+            # With dynamic update of seed for now just recompute even if file exists
+            # if not os.path.isfile(out_file):
 
-    return table
+            if year < self.snpp_api.min_year(self.region):
+                source = " [MYE]"
+            elif year <= self.snpp_api.max_year(self.region):
+                source = " [SNPP]"
+            else:
+                source = " [XNPP]"
+            print("Generating ", out_file, source, "... ",
+                  sep="", end="", flush=True)
+            msynth = self.__microsynthesise(year)
+            print("OK")
+            msynth.to_csv(out_file, index_label="PID")
 
-  def __check(self, table, age_sex, oa_eth):
+    def __microsynthesise(self, year): #LAD=self.region
 
-    failures = []
+        # Census/seed proportions for geography and ethnicity
+        oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
+        eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
 
-    # check area totals
-    areas = oa_eth.sum(1)
-    for i in range(0, len(areas)):
-      if len(table[table.Area == self.geog_map[i]]) != areas[i]:
-        failures.append("Area " + self.geog_map[i] + " total mismatch: "
-                        + str(len(table[table.Area == self.geog_map[i]])) + " vs " + str(areas[i]))
+        if year < self.snpp_api.min_year(self.region):
+            age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
+        elif year <= self.npp_api.max_year():
+            # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP
+            if year < self.npp_api.min_year() or self.is_custom:
+                age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
+            else:
+                age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
+        else:
+            raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
-    # check ethnicity totals
-    eths = oa_eth.sum(0)
-    for i in range(0, len(eths)):
-      if len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) != eths[i]:
-        failures.append("Ethnicity " + str(self.eth_map[i]) + " total mismatch: "
-                        + str(len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]])) + " vs " + str(eths[i]))
+        # convert proportions/probabilities to integer frequencies
+        oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
+        eth = hl.prob2IntFreq(eth_prop, age_sex.sum())["freq"]
+        # combine the above into a 2d marginal using QIS-I and census 2011 or later data as the seed
+        oa_eth = hl.qisi(self.seed.sum((1, 2)), [np.array([0]), np.array([1])], [oa, eth])
+        if not (isinstance(oa_eth, dict) and oa_eth["conv"]):
+            raise RuntimeError("oa_eth did not converge")
 
-    # check gender and age totals
-    for sex in [0, 1]:
-      for age in range(0, 86):
-        #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
-        if len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]) != age_sex[sex, age]:
-          failures.append("Age-gender " + str(age+1) + "/" + str(sex+1) + " total mismatch: "
-                          + str(len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]))
-                          + " vs " + str(age_sex[sex, age]))
+        # now the full seeded microsynthesis
+        if self.fast_mode:
+            msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
+        else:
+            msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
+        if not msynth["conv"]:
+            print(msynth)
+            raise RuntimeError("msynth did not converge")
+        #print(msynth["pop"])
+        if self.fast_mode:
+            print("updating seed to", year, " ", end="")
+            self.seed = msynth["result"]
+            msynth["result"] = np.around(msynth["result"]).astype(int)
+        else:
+            print("updating seed to", year, " ", end="")
+            self.seed = msynth["result"].astype(float)
+        rawtable = hl.flatten(msynth["result"]) #, c("OA", "SEX", "AGE", "ETH"))
 
-    if failures and not self.fast_mode:
-      print("\n".join(failures))
-      raise RuntimeError("Consistency checks failed, see log for further details")
+        # col names and remapped values
+        table = pd.DataFrame(columns=["Area", "DC1117EW_C_SEX", "DC1117EW_C_AGE", "DC2101EW_C_ETHPUK11"])
+        table.Area = utils.remap(rawtable[0], self.geog_map)
+        table.DC1117EW_C_SEX = utils.remap(rawtable[1], [1, 2])
+        table.DC1117EW_C_AGE = utils.remap(rawtable[2], range(1, 87))
+        table.DC2101EW_C_ETHPUK11 = utils.remap(rawtable[3], self.eth_map)
 
-  def __get_census_data(self):
+        # consistency checks (in fast mode just report discrepancies)
+        self.__check(table, age_sex, oa_eth["result"])
 
-    (dc1117, dc2101, dc6206) = self.get_census_data()
+        return table
 
-    # add children to adult-only table
-    #dc6206ew_adj = self.append_children(dc1117, dc6206)
-    # For now we drop NS-SEC (not clear if needed)
-    dc6206_adj = None
+    def __check(self, table, age_sex, oa_eth):
 
-    self.geog_map = dc1117.GEOGRAPHY_CODE.unique()
-    self.eth_map = dc2101.C_ETHPUK11.unique()
-    #self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
+        failures = []
 
-    # TODO seed with microdata
-    self.cen11 = utils.microsynthesise_seed(dc1117, dc2101, dc6206_adj)
+        # check area totals
+        areas = oa_eth.sum(1)
+        for i in range(0, len(areas)):
+            if len(table[table.Area == self.geog_map[i]]) != areas[i]:
+                failures.append("Area " + self.geog_map[i] + " total mismatch: "
+                                + str(len(table[table.Area == self.geog_map[i]])) + " vs " + str(areas[i]))
 
-    # seed defaults to census 11 data, updates as simulate past 2011
-    self.seed = self.cen11.astype(float)
+        # check ethnicity totals
+        eths = oa_eth.sum(0)
+        for i in range(0, len(eths)):
+            if len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]]) != eths[i]:
+                failures.append("Ethnicity " + str(self.eth_map[i]) + " total mismatch: "
+                                + str(len(table[table.DC2101EW_C_ETHPUK11 == self.eth_map[i]])) + " vs " + str(eths[i]))
+
+        # check gender and age totals
+        for sex in [0, 1]:
+            for age in range(0, 86):
+                #print( len(table[(table.DC1117EW_C_SEX == s+1) & (table.DC1117EW_C_AGE == a+1)]), age_sex[s,a])
+                if len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]) != age_sex[sex, age]:
+                    failures.append("Age-gender " + str(age+1) + "/" + str(sex+1) + " total mismatch: "
+                                    + str(len(table[(table.DC1117EW_C_SEX == sex+1) & (table.DC1117EW_C_AGE == age+1)]))
+                                    + " vs " + str(age_sex[sex, age]))
+
+        if failures and not self.fast_mode:
+            print("\n".join(failures))
+            raise RuntimeError("Consistency checks failed, see log for further details")
+
+    def __get_census_data(self):
+
+        (dc1117, dc2101, dc6206) = self.get_census_data()
+
+        # add children to adult-only table
+        #dc6206ew_adj = self.append_children(dc1117, dc6206)
+        # For now we drop NS-SEC (not clear if needed)
+        dc6206_adj = None
+
+        self.geog_map = dc1117.GEOGRAPHY_CODE.unique()
+        self.eth_map = dc2101.C_ETHPUK11.unique()
+        #self.nssec_map = dc6206ew_adj.C_NSSEC.unique()
+
+        # TODO seed with microdata
+        self.cen11 = utils.microsynthesise_seed(dc1117, dc2101, dc6206_adj)
+
+        # seed defaults to census 11 data, updates as simulate past 2011
+        self.seed = self.cen11.astype(float)
 
