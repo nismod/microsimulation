@@ -20,4 +20,4 @@ fi
 #$ -l h_vmem=1G
 #$ -pe smp 1 
 ##$ -l node_type=256thread-112G 
-python3 scripts/run_assignment.py -c config/ass_default.json $REGION
+python3 scripts/run_ssm.py -c config/ssm_covid.json $REGION

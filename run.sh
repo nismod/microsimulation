@@ -15,7 +15,7 @@ if [ -z "$REGION" ]; then
 fi
 
 #$ -m e
-#$ -M a.p.smith@leeds.ac.uk
+#$ -M l.archer@leeds.ac.uk
 #$ -cwd -V
 #$ -l h_vmem=1G
 #$ -pe smp 1 
