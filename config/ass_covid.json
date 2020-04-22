@@ -1,0 +1,8 @@
+{
+  "person_resolution": "MSOA11",
+  "household_resolution": "OA11",
+  "projection": "ppp",
+  "strict": true,
+  "year": 2020,
+  "data_dir": "./data"
+}
