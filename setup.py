@@ -16,7 +16,7 @@ setup(name='microsimulation',
   license='MIT',
   packages=['microsimulation'],
   zip_safe=False,
-  install_requires=['distutils_pytest', 'humanleague', 'ukcensusapi', 'ukpopulation'],
+  install_requires=['distutils_pytest', 'humanleague', 'ukcensusapi', 'ukpopulation @ git+https://github.com/nismod/ukpopulation.git@Development#egg=ukpopulation'],
   test_suite='nose.collector',
   tests_require=['nose'],
   python_requires='>=3'
