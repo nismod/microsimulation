@@ -88,6 +88,12 @@ class SequentialMicrosynthesis(common.Base):
       print("Generating ", out_file, source, "... ",
             sep="", end="", flush=True)
       msynth = self.__microsynthesise(year)
+
+      # Rescale 2018 SPENSER output using ONS small area population projection
+      if year == 2018:
+        msynth = utils.do_rescale(msynth)
+        print("2018 SPENSER output rescaled to ONS small area mid year estimates")
+
       print("OK")
       msynth.to_csv(out_file, index_label="PID")
 
