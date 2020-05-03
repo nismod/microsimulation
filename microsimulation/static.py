@@ -77,7 +77,7 @@ class SequentialMicrosynthesis(common.Base):
             # this is inconsistent with the household microsynth (batch script checks whether output exists)
             # TODO make them consistent?
             # With dynamic update of seed for now just recompute even if file exists
-            # if not os.path.isfile(out_file):
+            #if not os.path.isfile(out_file):
 
             if year < self.snpp_api.min_year(self.region):
                 source = " [MYE]"
@@ -88,6 +88,12 @@ class SequentialMicrosynthesis(common.Base):
             print("Generating ", out_file, source, "... ",
                   sep="", end="", flush=True)
             msynth = self.__microsynthesise(year)
+
+            # Rescale 2018 SPENSER output using ONS small area population projection
+            if year == 2018:
+                msynth = utils.do_rescale(msynth)
+                print("2018 SPENSER output rescaled to ONS small area mid year estimates")
+
             print("OK")
             msynth.to_csv(out_file, index_label="PID")
 
