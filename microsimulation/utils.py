@@ -321,12 +321,15 @@ def ons_rescale_prep(regions, ons, oa_lookup):
   # Rename value column after reshape
   ons_long.rename(columns={'age_': 'Count'}, inplace=True)
   # Sort data by MSOA and Age
-  ons_long.sort_values(by=['MSOA11CD', 'Age'], axis=0, inplace=True, ignore_index=True)
+  ons_long.sort_values(by=['MSOA11CD', 'Age'], axis=0, inplace=True)
+  ons_long.reset_index(inplace=True)
 
   return ons_long
 
 
 def rescale(num_ethgroups, ons, ethprop, prim_ethgroup, ethtot=None):
+
+  #TODO: DO WE NEED THIS? Should we merge with ethtot instead of num_ethgroups?
 
   # First need to merge the dataframes on MSOA and Age, then keep only rows in ONS data ONLY
   merged = pd.merge(left=num_ethgroups,
