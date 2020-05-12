@@ -7,8 +7,8 @@
 #$ -l h_vmem=2G
 #$ -m e
 #$ -M l.archer@leeds.ac.uk
-#$ -o ./logs
-#$ -e ./logs
+#$ -o ./logs/logs_ass
+#$ -e ./logs/logs_ass_error
 
 # check env is set up correctly
 . ./check.sh

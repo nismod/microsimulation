@@ -22,5 +22,5 @@ qsub_params="-l h_rt=2:0:0"
 
 export REGION=$region
 echo Submitting job for $REGION
-qsub -o ./logs/logs_$1 -e ./logs/logs_error/$1 $qsub_params covid_run.sh
+qsub -o ./logs_$1 -e ./logs_$1 $qsub_params covid_run_slow.sh
 

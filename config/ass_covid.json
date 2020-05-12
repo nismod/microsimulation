@@ -3,7 +3,7 @@
   "household_resolution": "OA11",
   "projection": "ppp",
   "strict": true,
-  "year": 2018,
+  "year": 2020,
   "data_dir": "./data",
   "profile": false
 }

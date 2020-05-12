@@ -6,9 +6,9 @@
 #$ -l h_rt=48:00:00
 #$ -l h_vmem=2G
 #$ -m e
-#$ -M a.p.smith@leeds.ac.uk
-#$ -o ./logs
-#$ -e ./logs
+#$ -M l.archer@leeds.ac.uk
+#$ -o ./logs/logs_ass
+#$ -e ./logs/logs_ass_error
 
 # check env is set up correctly
 . ./check.sh

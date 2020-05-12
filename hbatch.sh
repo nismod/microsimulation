@@ -12,9 +12,9 @@ logdir=./logs
 #$ -l h_rt=01:00:00
 #$ -l h_vmem=2G
 #$ -m e
-#$ -M a.p.smith@leeds.ac.uk
-#$ -o ./logs
-#$ -e ./logs
+#$ -M l.archer@leeds.ac.uk
+#$ -o ./logs/logs
+#$ -e ./logs/logs_hh_error
 
 # Tell SGE that this is an array job, with "tasks" numbered from 1 to 38
 #$ -t 1-38
