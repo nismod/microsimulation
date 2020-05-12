@@ -43,7 +43,7 @@ qsub_params="-l h_rt=8:0:0"
 for region in $regions; do
   export REGION=$region
   echo Submitting job for $REGION
-  qsub -o ./logs -e ./logs $qsub_params run_covid.sh
+  qsub -o ./logs -e ./logs $qsub_params covid_run.sh
   sleep 1
 done
 
