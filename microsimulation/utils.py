@@ -330,7 +330,8 @@ def ons_rescale_prep(regions, ons, oa_lookup):
     # Rename value column after reshape
     ons_long.rename(columns={'age_': 'Count'}, inplace=True)
     # Sort data by MSOA and Age
-    ons_long.sort_values(by=['MSOA11CD', 'Age'], axis=0, inplace=True, ignore_index=True)
+    ons_long.sort_values(by=['MSOA11CD', 'Age'], axis=0, inplace=True)
+    ons_long.reest_index(inplace=True)
 
     return ons_long
 
