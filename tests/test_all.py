@@ -5,7 +5,6 @@ from unittest import TestCase
 
 import microsimulation.static as Static
 import microsimulation.static_h as StaticH
-import microsimulation.assignment as Assignment
 
 class Test(TestCase):
 
