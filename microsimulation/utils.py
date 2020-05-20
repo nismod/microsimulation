@@ -246,8 +246,10 @@ def do_rescale(spenser_2018):
 
   # Now need to sort by Area, Sex, and Age, and reattach a PID
   final.sort_values(by=['Area', 'DC1117EW_C_SEX', 'DC1117EW_C_AGE', 'DC2101EW_C_ETHPUK11'],
-                    inplace=True,
-                    ignore_index=True)
+                    inplace=True)
+  final.reset_index(inplace=True)
+  # Docker build uses python 3.5 (based on continuumio/anaconda3 image) so can't call ignore_index=True in sort_values
+  # This wasn't possible until pandas v1.0.0 (https://pandas.pydata.org/pandas-docs/stable/whatsnew/v1.0.0.html)
 
   # LAST STEP!!!!! Rearrange the order of the columns
   final = final[['Area', 'DC1117EW_C_SEX', 'DC1117EW_C_AGE', 'DC2101EW_C_ETHPUK11']]
