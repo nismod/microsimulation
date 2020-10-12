@@ -89,7 +89,7 @@ class SequentialMicrosynthesis(common.Base):
                   sep="", end="", flush=True)
             msynth = self.__microsynthesise(year)
 
-            # Rescale 2018 SPENSER output using ONS small area population projectioni
+            # Rescale 2018 SPENSER output using ONS small area population projection
             # Only do this for England and Welsh regions, data not available at same resolution for Scotland and NI
             if year == 2018 and str(self.region[0]) in ['E', 'W']:
                 msynth = utils.do_rescale(msynth)
