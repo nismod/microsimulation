@@ -1,0 +1,9 @@
+{
+  "resolution": "MSOA11",
+  "projection": "ppp",
+  "census_ref_year": 2011,
+  "horizon_year": 2021,
+  "mode": "fast",
+  "cache_dir": "./cache",
+  "output_dir": "./data"
+}
