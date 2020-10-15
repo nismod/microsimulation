@@ -215,183 +215,104 @@ def year_sequence(start_year, end_year):
     return list(range(start_year, end_year - 1, -1))
 
 
-def do_rescale(spenser_2018):
+def rescale_2018(regions):
+  """
+  This function produces marginals for IPF from the ONS LSOA level counts dataset from 2018.
+  The marginals produced are counts by age and sex, and the proportion of the total in each
+  region.
+  :param regions: The list of MSOA level geography regions within the microsimulation target.
+  :return: age_sex: A [2,86] ndArray of counts broken down by sex by age.
+          oa_prop: The proportion of the population within each MSOA.
+  """
 
-    pd_dir = "./persistent_data/"
+  # Read in the oa lookup file to combine LSOAs into MSOAs
+  pd_dir = "./persistent_data/"
+  oa_lookup = pd.read_csv(pd_dir + "OA_to_LSOA_to_MSOA_to_LAD_December_2017.csv", header=0)
+  oa_l2m = oa_lookup[['LSOA11CD', 'MSOA11CD']]  # Only need to keep LSOAs and MSOAs
 
-    # Read in the oa lookup file to combine LSOAs into MSOAs
-    oa_lookup = pd.read_csv(pd_dir + "OA_to_LSOA_to_MSOA_to_LAD_December_2017.csv", header=0)
-    #oa_lookup = pd.read_csv("./persistent_data/OA_to_LSOA_to_MSOA_to_LAD_December_2017.csv", header=0)
+  # ONS data is split into male and female
+  ons_m = pd.read_csv(pd_dir + "males_lsoa_2018.csv")
+  ons_f = pd.read_csv(pd_dir + "females_lsoa_2018.csv")
+  ons_list = [ons_m, ons_f]
 
-    output = []
-    for gender in range(1, 3):
-        # gender: males == 1, females == 2
+  age_sex = pd.DataFrame()
+  oa_counts_list = []
 
-        # Split spenser data by gender (will add together at the end)
-        spenser_split = spenser_2018.loc[spenser_2018['DC1117EW_C_SEX'] == gender]
+  # Work with male and female files separately, then combine the age_sex marginals into a [2,86] dataframe
+  # 1 row per gender (0 - male, 1 - female)
+  for ons in ons_list:
+    oa_count, age_array = get_2018_ONS_age_counts(ons, oa_l2m, regions)
+    # Store
+    age_sex = age_sex.append(age_array.transpose(), ignore_index=True)
+    oa_counts_list.append(oa_count)
 
-        # Get the correct ONS file
-        if gender == 1:
-            ons = pd.read_csv(pd_dir + "males_lsoa_2018.csv")
-        else:
-            ons = pd.read_csv(pd_dir + "females_lsoa_2018.csv")
+  # Now aggregate for all ages 85+
+  age_sex[85] = age_sex[[85, 86, 87, 88, 89, 90]].sum(axis=1)
+  age_sex = age_sex.drop([86, 87, 88, 89, 90], axis=1)
 
-        # Calculate summary statistics about spenser that are required in rescale
-        regions, ethtot, ethprop, num_ethgroups, prim_ethgroup = spenser_rescale_prep(spenser_split)
+  age_sex = age_sex.to_numpy()
 
-        # Reshape ONS data wide to long (and other things)
-        ons_long = ons_rescale_prep(regions, ons, oa_lookup)
+  # Now oa_prop
+  oa_prop = get_2018_ONS_oa_prop(oa_counts_list)
 
-        # Do the rescale
-        rescaled_ind = rescale(num_ethgroups, ons_long, ethprop, prim_ethgroup)
-
-        # Reattach gender information
-        rescaled_ind['DC1117EW_C_SEX'] = gender
-
-        output.append(rescaled_ind)
-
-    # Concatenate the resulting dataframes together (male and female)
-    final = pd.concat(output)
-
-    # Now need to sort by Area, Sex, and Age, and reattach a PID
-    final.sort_values(by=['Area', 'DC1117EW_C_SEX', 'DC1117EW_C_AGE', 'DC2101EW_C_ETHPUK11'],
-                        inplace=True,
-                        ignore_index=True)
-
-    # Last Step: Rearrange the order of the columns
-    final = final[['Area', 'DC1117EW_C_SEX', 'DC1117EW_C_AGE', 'DC2101EW_C_ETHPUK11']]
-
-    return final
+  return age_sex, oa_prop
 
 
-def spenser_rescale_prep(spenser_2018):
+def get_2018_ONS_age_counts(ons, oa_l2m, geog_map):
+  """
+  Function that calculates the counts by age of the population in the target region, for a
+  single gender
+  :param ons: LSOA level single gender dataset of population counts by age
+  :param oa_l2m: Lookup file for LSOA to MSOA
+  :return: Population counts by single year of age (top coded at 85)
+  """
 
-    # Remove PID & gender (data already split into male and female)
-    spenser = spenser_2018.drop('DC1117EW_C_SEX', axis=1)
+  # Merge lookup onto ONS files to aggregate LSOAs
+  ons_oa = pd.merge(left=ons,
+                    right=oa_l2m,
+                    how='left',
+                    left_on='Area Codes',
+                    right_on='LSOA11CD')
 
-    # Extract MSOAs from SPENSER to subset the ONS data
-    regions = pd.Series(spenser_2018.Area.unique())
+  # Duplicates created in the merge
+  ons_oa = ons_oa.drop_duplicates()
+  # Now aggregate the LSOAs to get to MSOA level totals
+  ons_msoa = ons_oa.groupby('MSOA11CD').agg('sum').reset_index()
+  # Subset the data to include only the MSOAs in the region currently running
+  ons_msoa = ons_msoa[ons_msoa['MSOA11CD'].isin(geog_map)].reset_index()
 
-    # Get the ethnicity distribution from SPENSER
-    # The following dataframe contains data grouped by Area, Age, and ethnicity, and the number of individuals
-    # i.e. the number of white males aged 0 in the Area E02002330 = 27
-    ethtot = spenser.groupby(['Area', 'DC1117EW_C_AGE', 'DC2101EW_C_ETHPUK11']).size()
+  # Aggregate to get counts by age
+  ons_agg = ons_msoa.sum(axis=0)
+  ons_agg.drop(labels=['index', 'MSOA11CD'], inplace=True)
 
-    # We need proportions so we can apply new counts and keep the same distribution
-    ethprop = ethtot.groupby(level=[0, 1]).apply(lambda x: x / x.sum()).reset_index(name='Ethnic_Proportion')
+  # Make sure dtype is numeric & reset index to fix weird indexing issues after append
+  ons_agg = pd.to_numeric(ons_agg).reset_index(drop=True)
+  ons_df = pd.DataFrame(ons_agg)
 
-    num_ethgroups = ethprop.groupby(['Area', 'DC1117EW_C_AGE']).size().reset_index(name='# Ethnic Groups')
-
-    # Drop the Area and calculate the most common ethnic group per age. This is for the imputation later
-    primary_ethgroup = spenser.drop('Area', axis=1)
-    primary_ethgroup = primary_ethgroup.groupby('DC1117EW_C_AGE').agg(lambda x: x.value_counts().index[0]).reset_index()
-
-    return regions, ethtot, ethprop, num_ethgroups, primary_ethgroup
-
-
-def ons_rescale_prep(regions, ons, oa_lookup):
-
-    # Only need to keep LSOAs and MSOAs
-    oa_l2m = oa_lookup[['LSOA11CD', 'MSOA11CD']]
-
-    # Merge lookup onto ONS files to aggregate LSOAs
-    ons_oa = pd.merge(left=ons,
-                          right=oa_l2m,
-                          how='left',
-                          left_on='Area Codes',
-                          right_on='LSOA11CD')
-
-    # Drop duplicate rows from the merge
-    ons_oa = ons_oa.drop_duplicates()
-
-    # Now aggregate the MSOAs and sum
-    ons_msoa = ons_oa.groupby('MSOA11CD').agg('sum').reset_index()
-
-    # Subset the data to include only the MSOAs from the SPENSER data
-    # female_subset = female[female['Area Codes'].isin(regions)]
-    ons_msoa = ons_msoa[ons_msoa['MSOA11CD'].isin(regions)]
-
-    # Replacing column names to include 'age_' prefix (for reshape) and change ages to fit SPENSER dataset
-    # SPENSER data age index starts at 1, whilst ONS starts at 0. Replacing ONS index to fit SPENSER
-    colnames = ['MSOA11CD']
-    for x in range(1, 91):
-        colnames.append('age_' + str(x))
-    colnames.append('age_91')
-
-    # Now replace
-    ons_msoa.columns = colnames
-
-    # Aggregate the ages 85+ to match SPENSER output, then drop unnecessary cols
-    ons_msoa['age_86'] = ons_msoa[['age_86', 'age_87', 'age_88', 'age_89', 'age_90', 'age_91']].sum(axis=1)
-    ons_msoa = ons_msoa.drop(['age_87', 'age_88', 'age_89', 'age_90', 'age_91'], axis=1)
-
-    # Now need to reshape the ONS data from wide to long
-    ons_long = pd.wide_to_long(ons_msoa, stubnames='age_', i='MSOA11CD', j='Age').reset_index()
-    # Rename value column after reshape
-    ons_long.rename(columns={'age_': 'Count'}, inplace=True)
-    # Sort data by MSOA and Age
-    ons_long.sort_values(by=['MSOA11CD', 'Age'], axis=0, inplace=True)
-    ons_long.reset_index(inplace=True)
-
-    return ons_long
+  return ons_msoa, ons_df
 
 
-def rescale(num_ethgroups, ons, ethprop, prim_ethgroup, ethtot=None):
+def get_2018_ONS_oa_prop(oa_counts_list):
+  """
+  Returns the proportion by population within each MSOA in the target region
+  :param oa_counts_list: List of counts by region by age, separately by gender
+  :return: Proportion of the population within each MSOA
+  """
 
-    # First need to merge the dataframes on MSOA and Age, then keep only rows in ONS data ONLY
-    merged = pd.merge(left=num_ethgroups,
-                        right=ons,
-                        how='right',  # Ensure we keep rows that exist in ONS and not in SPENSER data
-                        left_on=['Area', 'DC1117EW_C_AGE'],
-                        right_on=['MSOA11CD', 'Age'],
-                        indicator=True)  # Check the merge
+  # Combine the male and female specific oa_counts dataframes
+  oa_counts = pd.concat(objs=[oa_counts_list[0], oa_counts_list[1]]).reset_index()
+  oa_counts = oa_counts.drop(['level_0', 'index'], axis=1)
 
-    # Remove the SPENSER columns to be replaced
-    merged = merged.drop(axis=1, columns=['Area', 'DC1117EW_C_AGE'])
-    # Reorder the columns
-    merged = merged[['MSOA11CD', 'Age', '# Ethnic Groups', 'Count', '_merge']]
-    # Rename to fit SPENSER format
-    merged = merged.rename(columns={'MSOA11CD': 'Area', 'Age': 'DC1117EW_C_AGE', '# Ethnic Groups': 'ethGroups'})
+  # Groupby the geog code and sum to get counts by age in each region
+  oa_counts = oa_counts.groupby('MSOA11CD').sum()
 
-    # Merge ethnic proportions dataset onto merged
-    merg_prop = pd.merge(left=merged,
-                           right=ethprop,
-                           how='outer',
-                           on=['Area', 'DC1117EW_C_AGE'])
-    # If this merge has worked correctly, individual rows in merged should have been duplicated to produce
-    # 1 row per MSOA, per Age, per ethnic group, with a count attached
+  # Now sum over all the ages
+  oa_counts = oa_counts.sum(axis=1)
 
-    # Now impute missing values
-    imputed = impute_missing(merg_prop, prim_ethgroup)
+  # Calculate the proportion
+  oa_prop = oa_counts / oa_counts.sum(axis=0)
+  # Convert to numpy array and then done
+  oa_prop = oa_prop.to_numpy()
 
-    # Get the new counts by multiplying total (Count) by ethnic proportion and round to nearest whole number
-    imputed['newCount'] = imputed['Count'].mul(imputed['Ethnic_Proportion'])
-    imputed['newCount'] = imputed['newCount'].round(0)
+  return oa_prop
 
-    # Now we need to expand the dataset of counts into a dataset of individuals, with 1 row per person
-    # Duplicate the rows based on the value in Count
-    final_ind = imputed.reindex(imputed.index.repeat(imputed['newCount'])).reset_index()
-
-    # Drop unnecessary columns and rename other to fit original format
-    final_ind.drop(columns=['index', 'Count', 'Ethnic_Proportion', 'newCount'], inplace=True)
-    final_ind.rename(columns={'DC2101EW_C_ETHPUK11_x': 'DC2101EW_C_ETHPUK11'}, inplace=True)
-
-    return final_ind
-
-
-def impute_missing(merg_prop, prim_ethgroup):
-
-    imputed_ind = pd.merge(left=merg_prop,
-                             right=prim_ethgroup,
-                             how='left',
-                             on='DC1117EW_C_AGE')
-
-    # Replace missing ethnicity values in imputed_ind with replacement from prim_ethgroup
-    imputed_ind['DC2101EW_C_ETHPUK11_x'].fillna(value=imputed_ind['DC2101EW_C_ETHPUK11_y'], inplace=True)
-
-    # Drop the original DC2101EW_C_ETHPUK11 as it contains missing values, along with other columns no longer needed
-    imputed_ind.drop(columns=['DC2101EW_C_ETHPUK11_y', '_merge', 'ethGroups'], inplace=True)
-    # Fill null values in Ethnic_Proportion with 1.0, as they are being filled with the most common ethnic group only
-    imputed_ind['Ethnic_Proportion'].fillna(value=1.00000, inplace=True)  # maintain 5 sig figs
-
-    return imputed_ind
