@@ -81,7 +81,7 @@ class SequentialMicrosynthesis(common.Base):
 
       if year < self.snpp_api.min_year(self.region):
         source = " [MYE]"
-      elif year <= self.snpp_api.max_year(self.region):  
+      elif year <= self.snpp_api.max_year(self.region):
         source = " [SNPP]"
       else:
         source = " [XNPP]"
@@ -91,9 +91,9 @@ class SequentialMicrosynthesis(common.Base):
 
       # Rescale 2018 SPENSER output using ONS small area population projection
       # Only do this for England and Welsh regions, data not available at same resolution for Scotland and NI
-      if year == 2018 and str(self.region[0]) in ['E', 'W']:
-        msynth = utils.do_rescale(msynth)
-        print("2018 SPENSER output rescaled to ONS small area mid year estimates")
+      #if year == 2018 and str(self.region[0]) in ['E', 'W']:
+      #  msynth = utils.do_rescale(msynth)
+      #  print("2018 SPENSER output rescaled to ONS small area mid year estimates")
 
       print("OK")
       msynth.to_csv(out_file, index_label="PID")
@@ -103,17 +103,24 @@ class SequentialMicrosynthesis(common.Base):
     # Census/seed proportions for geography and ethnicity
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
-   
+
     if year < self.snpp_api.min_year(self.region):
       age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
     elif year <= self.npp_api.max_year():
-      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP 
+      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP
       if year < self.npp_api.min_year() or self.is_custom:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
       else:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
+
+    as_copy = age_sex.copy()
+    oa_copy = oa_prop.copy()
+
+    # Rescale marginals for E+W in 2018 based on most LSOA level population estimates
+    if year == 2018 and str(self.region[0]) in ['E', 'W'] and str(self.resolution) == 'MSOA11':
+      age_sex, oa_prop = utils.rescale_2018(self.geog_map)
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
