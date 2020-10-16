@@ -23,41 +23,40 @@ class SequentialMicrosynthesis(common.Base):
 
   def __init__(self, region, resolution, variant, is_custom=False, cache_dir="./cache", output_dir="./data", fast_mode=False):
 
-      common.Base.__init__(self, region, resolution, cache_dir)
+    common.Base.__init__(self, region, resolution, cache_dir)
 
-      self.output_dir = output_dir
-      self.fast_mode = fast_mode
-      self.variant = variant
-      self.is_custom = is_custom
+    self.output_dir = output_dir
+    self.fast_mode = fast_mode
+    self.variant = variant
+    self.is_custom = is_custom
 
-      # init the population (projections) modules
-      self.mye_api = myedata.MYEData(cache_dir)
-      self.npp_api = nppdata.NPPData(cache_dir)
-      if self.is_custom:
-          if variant not in customsnppdata.list_custom_projections(cache_dir):
-              raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
-          print("Using custom SNPP variant %s" % variant)
-          print("NOTE: assuming custom SNPP variant disables rescaling to national variant")
-          self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
-      else:
-          self.snpp_api = snppdata.SNPPData(cache_dir)
+    # init the population (projections) modules
+    self.mye_api = myedata.MYEData(cache_dir)
+    self.npp_api = nppdata.NPPData(cache_dir)
+    if self.is_custom:
+      if variant not in customsnppdata.list_custom_projections(cache_dir):
+        raise ValueError("Requested custom SNPP %s is not in the cache directory (%s)" % (variant, cache_dir))
+      print("Using custom SNPP variant %s" % variant)
+      print("NOTE: assuming custom SNPP variant disables rescaling to national variant")
+      self.snpp_api = customsnppdata.CustomSNPPData(variant, cache_dir)
+    else:
+      self.snpp_api = snppdata.SNPPData(cache_dir)
 
-      # validation
-      if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
-          raise ValueError(self.variant + " is not a known projection variant")
-      if not isinstance(self.fast_mode, bool):
-          raise ValueError("fast mode should be boolean")
+    # validation
+    if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
+      raise ValueError(self.variant + " is not a known projection variant")
+    if not isinstance(self.fast_mode, bool):
+      raise ValueError("fast mode should be boolean")
 
-      # TODO enable 2001 ref year?
-      # (down)load the census 2011 tables
-      self.__get_census_data()
+    # TODO enable 2001 ref year?
+    # (down)load the census 2011 tables
+    self.__get_census_data()
 
   def run(self, ref_year, target_year):
-      """
-      Run the sequence
-      """
+    """
+    Run the sequence
+    """
 
-        
     # TODO enable 2001 ref year?
 
     if ref_year != 2011:
@@ -90,12 +89,6 @@ class SequentialMicrosynthesis(common.Base):
             sep="", end="", flush=True)
       msynth = self.__microsynthesise(year)
 
-      # Rescale 2018 SPENSER output using ONS small area population projection
-      # Only do this for England and Welsh regions, data not available at same resolution for Scotland and NI
-      #if year == 2018 and str(self.region[0]) in ['E', 'W']:
-      #  msynth = utils.do_rescale(msynth)
-      #  print("2018 SPENSER output rescaled to ONS small area mid year estimates")
-
       print("OK")
       msynth.to_csv(out_file, index_label="PID")
 
@@ -116,11 +109,7 @@ class SequentialMicrosynthesis(common.Base):
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
-    as_copy = age_sex.copy()
-    oa_copy = oa_prop.copy()
-
-    # Rescale marginals for E+W in 2018 based on most LSOA level population estimates
-    if year == 2018 and str(self.region[0]) in ['E', 'W'] and str(self.resolution) == 'MSOA11':
+    if year == 2018 and str(self.region[0]) in ['E', 'W'] and self.resolution == 'MSOA11CD':
       age_sex, oa_prop = utils.rescale_2018(self.geog_map)
 
     # convert proportions/probabilities to integer frequencies
@@ -210,4 +199,3 @@ class SequentialMicrosynthesis(common.Base):
 
     # seed defaults to census 11 data, updates as simulate past 2011
     self.seed = self.cen11.astype(float)
-
