@@ -109,7 +109,7 @@ class SequentialMicrosynthesis(common.Base):
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
 
-    if year == 2018 and str(self.region[0]) in ['E', 'W'] and self.resolution == 'MSOA11CD':
+    if year == 2018 and str(self.region[0]) in ['E', 'W'] and self.resolution == 'MSOA11':
       age_sex, oa_prop = utils.rescale_2018(self.geog_map)
 
     # convert proportions/probabilities to integer frequencies
